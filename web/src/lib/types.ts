@@ -180,6 +180,57 @@ export interface MetricsSample {
   interfaces: NetRate[];
 }
 
+export interface Job {
+  id: string;
+  name: string;
+  status: "running" | "succeeded" | "failed" | "canceled";
+  startedAt: string;
+  finishedAt?: string;
+  exitCode: number;
+  error?: string;
+}
+
+export interface JobLine {
+  seq: number;
+  time: string;
+  stream: "stdout" | "stderr" | "system";
+  text: string;
+}
+
+export interface AuditEntry {
+  time: string;
+  user: string;
+  action: string;
+  target?: string;
+  success: boolean;
+  detail?: string;
+  ip?: string;
+}
+
+export interface K3sStatus {
+  installed: boolean;
+  active: boolean;
+  version?: string;
+  nodeName?: string;
+  hasUninstall: boolean;
+}
+
+export interface K3sNode {
+  name: string;
+  ready: boolean;
+  roles: string[] | null;
+  version: string;
+  ip?: string;
+}
+
+export interface K3sPod {
+  namespace: string;
+  name: string;
+  phase: string;
+  ready: string;
+  node?: string;
+}
+
 export interface Process {
   pid: number;
   ppid: number;

@@ -11,6 +11,8 @@ import {
   Clock,
   CalendarClock,
   Activity,
+  Boxes,
+  ClipboardList,
 } from "lucide-vue-next";
 
 export interface NavItem {
@@ -30,7 +32,9 @@ export const navItems: NavItem[] = [
   { to: "/network", label: "Netzwerk", icon: Network, group: "Verbindungen" },
   { to: "/storage", label: "Speicher", icon: HardDrive, group: "Geräte" },
   { to: "/packages", label: "Pakete & Updates", icon: Package, group: "Apps" },
+  { to: "/k3s", label: "k3s (Kubernetes)", icon: Boxes, group: "Container" },
   { to: "/firewall", label: "Firewall", icon: ShieldCheck, group: "Sicherheit" },
+  { to: "/audit", label: "Audit-Protokoll", icon: ClipboardList, group: "Sicherheit" },
   { to: "/scheduled", label: "Geplante Aufgaben", icon: CalendarClock, group: "Aufgaben" },
   { to: "/datetime", label: "Datum & Uhrzeit", icon: Clock, group: "Zeit & Sprache" },
   { to: "/logs", label: "Systemprotokolle", icon: ScrollText, group: "Diagnose" },

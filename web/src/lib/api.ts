@@ -14,6 +14,11 @@ import type {
   ScheduledTasks,
   TimeInfo,
   Process,
+  Job,
+  AuditEntry,
+  K3sStatus,
+  K3sNode,
+  K3sPod,
 } from "./types";
 
 export class ApiError extends Error {
@@ -25,11 +30,24 @@ export class ApiError extends Error {
   }
 }
 
+/** Liest ein Cookie (für den CSRF-Double-Submit-Token). */
+function readCookie(name: string): string {
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (body) headers["Content-Type"] = "application/json";
+  // CSRF-Token bei zustandsändernden Methoden mitschicken.
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers["X-CSRF-Token"] = readCookie("da_csrf");
+  }
+
   const res = await fetch(`/api${path}`, {
     method,
     credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -52,7 +70,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 const get = <T>(p: string) => request<T>("GET", p);
 const post = <T>(p: string, b?: unknown) => request<T>("POST", p, b);
 const put = <T>(p: string, b?: unknown) => request<T>("PUT", p, b);
-const del = <T>(p: string) => request<T>("DELETE", p);
+const del = <T>(p: string, b?: unknown) => request<T>("DELETE", p, b);
 
 export const api = {
   // Authentifizierung
@@ -77,15 +95,31 @@ export const api = {
   serviceAction: (name: string, action: string) =>
     post<{ ok: boolean }>(`/system/services/${encodeURIComponent(name)}/action`, { action }),
 
+  modifyUser: (name: string, groups: string[] | null, shell: string) =>
+    put<{ ok: boolean }>(`/system/users/${encodeURIComponent(name)}`, { groups, shell }),
+  createGroup: (name: string, system: boolean) =>
+    post<{ ok: boolean }>("/system/groups", { name, system }),
+  deleteGroup: (name: string) =>
+    del<{ ok: boolean }>(`/system/groups/${encodeURIComponent(name)}`),
+
   packages: () => get<PackageSummary>("/system/packages"),
   installedPackages: () => get<Package[]>("/system/packages/installed"),
   aptUpdate: () => post<{ output: string }>("/system/packages/update"),
+  packageInstall: (packages: string[]) =>
+    post<{ jobId: string }>("/system/packages/install", { packages }),
+  packageRemove: (packages: string[]) =>
+    post<{ jobId: string }>("/system/packages/remove", { packages }),
+  packageUpgrade: () => post<{ jobId: string }>("/system/packages/upgrade"),
 
   network: () => get<NetworkInfo>("/system/network"),
   storage: () => get<StorageInfo>("/system/storage"),
 
   firewall: () => get<FirewallStatus>("/system/firewall"),
   setFirewall: (enabled: boolean) => put<{ ok: boolean }>("/system/firewall", { enabled }),
+  firewallAddRule: (action: string, port: string, protocol: string) =>
+    post<{ ok: boolean }>("/system/firewall/rules", { action, port, protocol }),
+  firewallDeleteRule: (action: string, port: string, protocol: string) =>
+    del<{ ok: boolean }>("/system/firewall/rules", { action, port, protocol }),
 
   logs: (params: { unit?: string; priority?: string; lines?: number }) => {
     const q = new URLSearchParams();
@@ -104,6 +138,35 @@ export const api = {
   setNTP: (enabled: boolean) => put<{ ok: boolean }>("/system/time/ntp", { enabled }),
 
   processes: (limit = 50) => get<Process[]>(`/system/processes?limit=${limit}`),
+  killProcess: (pid: number, signal: string) =>
+    post<{ ok: boolean }>(`/system/processes/${pid}/kill`, { signal }),
+
+  createCron: (name: string, schedule: string, user: string, command: string) =>
+    post<{ ok: boolean }>("/system/cron", { name, schedule, user, command }),
+  deleteCron: (name: string) => del<{ ok: boolean }>(`/system/cron/${encodeURIComponent(name)}`),
+
+  setHostname: (hostname: string) =>
+    put<{ ok: boolean }>("/system/network/hostname", { hostname }),
+  setInterfaceState: (iface: string, up: boolean) =>
+    put<{ ok: boolean }>(`/system/network/interfaces/${encodeURIComponent(iface)}`, { up }),
+
+  // Jobs
+  jobs: () => get<Job[]>("/system/jobs"),
+  job: (id: string) => get<Job>(`/system/jobs/${id}`),
+  cancelJob: (id: string) => post<{ ok: boolean }>(`/system/jobs/${id}/cancel`),
+
+  // Audit
+  audit: (limit = 200) => get<AuditEntry[]>(`/system/audit?limit=${limit}`),
+
+  // k3s
+  k3sStatus: () => get<K3sStatus>("/system/k3s/status"),
+  k3sNodes: () => get<K3sNode[]>("/system/k3s/nodes"),
+  k3sPods: () => get<K3sPod[]>("/system/k3s/pods"),
+  k3sKubeconfig: () => get<{ kubeconfig: string }>("/system/k3s/kubeconfig"),
+  k3sToken: () => get<{ token: string }>("/system/k3s/token"),
+  k3sInstall: (opts: { disableTraefik: boolean; writeKubeconfigMode: string }) =>
+    post<{ jobId: string }>("/system/k3s/install", opts),
+  k3sUninstall: () => post<{ jobId: string }>("/system/k3s/uninstall"),
 
   power: (action: "reboot" | "poweroff") => post<{ ok: boolean }>("/system/power", { action }),
 };

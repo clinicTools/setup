@@ -1,0 +1,158 @@
+<script setup lang="ts">
+import { computed } from "vue";
+import {
+  Cpu,
+  MemoryStick,
+  Clock,
+  Server,
+  Package,
+  Activity,
+  HardDrive,
+  Gauge,
+} from "lucide-vue-next";
+import { api } from "@/lib/api";
+import { useAsyncData } from "@/composables/useAsyncData";
+import { formatBytes, formatUptime } from "@/lib/utils";
+import PageHeader from "@/components/PageHeader.vue";
+import StatCard from "@/components/StatCard.vue";
+import DataState from "@/components/DataState.vue";
+import UsageBar from "@/components/UsageBar.vue";
+
+const { data: info, loading, error } = useAsyncData(() => api.info());
+const { data: pkg } = useAsyncData(() => api.packages());
+const { data: storage } = useAsyncData(() => api.storage());
+
+const memPercent = computed(() => {
+  const m = info.value?.memory;
+  return m && m.total ? (m.used / m.total) * 100 : 0;
+});
+const swapPercent = computed(() => {
+  const s = info.value?.swap;
+  return s && s.total ? (s.used / s.total) * 100 : 0;
+});
+const rootFs = computed(() =>
+  storage.value?.filesystems?.find((f) => f.mountpoint === "/"),
+);
+</script>
+
+<template>
+  <div>
+    <PageHeader
+      title="Übersicht"
+      description="Status und Eckdaten dieses Debian-Systems"
+      :breadcrumb="['System', 'Übersicht']"
+    />
+
+    <DataState :loading="loading" :error="error">
+      <div v-if="info" class="space-y-6">
+        <!-- Kennzahlen -->
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            label="Hostname"
+            :value="info.hostname || '—'"
+            :sub="info.prettyName"
+            :icon="Server"
+            accent
+          />
+          <StatCard
+            label="Laufzeit"
+            :value="formatUptime(info.uptimeSeconds)"
+            sub="seit letztem Start"
+            :icon="Clock"
+          />
+          <StatCard
+            label="CPU-Last (1 min)"
+            :value="info.loadAvg[0].toFixed(2)"
+            :sub="`${info.cpuCores} Kerne`"
+            :icon="Gauge"
+          />
+          <StatCard
+            label="Updates"
+            :value="String(pkg?.upgradable ?? 0)"
+            :sub="`${pkg?.installed ?? 0} Pakete installiert`"
+            :icon="Package"
+            accent
+          />
+        </div>
+
+        <!-- Ressourcen -->
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div class="mb-4 flex items-center gap-2">
+              <MemoryStick class="h-4 w-4 text-primary" />
+              <h2 class="text-sm font-semibold">Arbeitsspeicher</h2>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <UsageBar
+                  :percent="memPercent"
+                  :label="`RAM — ${formatBytes(info.memory.used)} / ${formatBytes(info.memory.total)}`"
+                />
+              </div>
+              <div v-if="info.swap.total">
+                <UsageBar
+                  :percent="swapPercent"
+                  :label="`Swap — ${formatBytes(info.swap.used)} / ${formatBytes(info.swap.total)}`"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div class="mb-4 flex items-center gap-2">
+              <HardDrive class="h-4 w-4 text-primary" />
+              <h2 class="text-sm font-semibold">Systemdatenträger</h2>
+            </div>
+            <div v-if="rootFs">
+              <UsageBar
+                :percent="rootFs.usePercent"
+                :label="`/ — ${formatBytes(rootFs.used)} / ${formatBytes(rootFs.total)}`"
+              />
+              <p class="mt-2 text-xs text-muted-foreground">
+                {{ rootFs.device }} · {{ rootFs.type }} · {{ formatBytes(rootFs.free) }} frei
+              </p>
+            </div>
+            <p v-else class="text-sm text-muted-foreground">Keine Daten verfügbar.</p>
+          </div>
+        </div>
+
+        <!-- Systeminformationen -->
+        <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div class="mb-4 flex items-center gap-2">
+            <Cpu class="h-4 w-4 text-primary" />
+            <h2 class="text-sm font-semibold">Systeminformationen</h2>
+          </div>
+          <dl class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+            <div class="flex justify-between border-b border-border/60 pb-2 text-sm">
+              <dt class="text-muted-foreground">Betriebssystem</dt>
+              <dd class="font-medium">{{ info.prettyName }}</dd>
+            </div>
+            <div class="flex justify-between border-b border-border/60 pb-2 text-sm">
+              <dt class="text-muted-foreground">Kernel</dt>
+              <dd class="font-mono text-xs">{{ info.kernel }}</dd>
+            </div>
+            <div class="flex justify-between border-b border-border/60 pb-2 text-sm">
+              <dt class="text-muted-foreground">Architektur</dt>
+              <dd class="font-medium">{{ info.architecture }}</dd>
+            </div>
+            <div class="flex justify-between border-b border-border/60 pb-2 text-sm">
+              <dt class="text-muted-foreground">Prozessor</dt>
+              <dd class="truncate font-medium">{{ info.cpuModel || "—" }}</dd>
+            </div>
+            <div v-if="info.virtualization" class="flex justify-between border-b border-border/60 pb-2 text-sm">
+              <dt class="text-muted-foreground">Virtualisierung</dt>
+              <dd class="font-medium">{{ info.virtualization }}</dd>
+            </div>
+            <div class="flex justify-between border-b border-border/60 pb-2 text-sm">
+              <dt class="text-muted-foreground">Lastdurchschnitt</dt>
+              <dd class="flex items-center gap-1 font-mono text-xs">
+                <Activity class="h-3 w-3" />
+                {{ info.loadAvg.map((l) => l.toFixed(2)).join(" · ") }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </DataState>
+  </div>
+</template>

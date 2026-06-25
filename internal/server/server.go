@@ -1,0 +1,113 @@
+// Package server verdrahtet Router, Middleware, API-Handler und das
+// eingebettete Frontend zu einem lauffähigen HTTP-Dienst.
+package server
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/clinictools/setup/internal/api"
+	"github.com/clinictools/setup/internal/auth"
+	"github.com/clinictools/setup/internal/config"
+	"github.com/clinictools/setup/internal/web"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+)
+
+// New baut den vollständigen HTTP-Handler des Dienstes.
+func New(cfg *config.Config) http.Handler {
+	authn := auth.NewAuthenticator(cfg.PAMService, cfg.AdminGroups)
+	sessions := auth.NewSessionManager(cfg.SessionSecret, cfg.SessionTTL, !cfg.AllowInsecureCookie)
+	a := api.New(authn, sessions)
+
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(securityHeaders)
+
+	if cfg.Dev {
+		r.Use(devCORS)
+	}
+
+	r.Route("/api", func(r chi.Router) {
+		// Öffentliche Auth-Endpunkte.
+		r.Post("/auth/login", a.Login)
+		r.Post("/auth/logout", a.Logout)
+		r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+		})
+
+		// Geschützte Endpunkte (gültige Session erforderlich).
+		r.Group(func(r chi.Router) {
+			r.Use(sessions.Middleware)
+			r.Get("/auth/me", a.Me)
+
+			// Lesende System-Endpunkte.
+			r.Get("/system/info", a.Info)
+			r.Get("/system/users", a.Users)
+			r.Get("/system/groups", a.Groups)
+			r.Get("/system/services", a.Services)
+			r.Get("/system/services/{name}/status", a.ServiceStatus)
+			r.Get("/system/packages", a.Packages)
+			r.Get("/system/packages/installed", a.InstalledPackages)
+			r.Get("/system/network", a.Network)
+			r.Get("/system/storage", a.Storage)
+			r.Get("/system/firewall", a.Firewall)
+			r.Get("/system/logs", a.Logs)
+			r.Get("/system/scheduled", a.Scheduled)
+			r.Get("/system/time", a.Time)
+			r.Get("/system/timezones", a.Timezones)
+			r.Get("/system/processes", a.Processes)
+
+			// Schreibende Endpunkte (zusätzlich Admin-Gruppe erforderlich).
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireAdmin)
+				r.Post("/system/services/{name}/action", a.ServiceAction)
+				r.Post("/system/users", a.CreateUser)
+				r.Delete("/system/users/{name}", a.DeleteUser)
+				r.Put("/system/users/{name}/password", a.SetPassword)
+				r.Put("/system/firewall", a.FirewallSet)
+				r.Put("/system/time/timezone", a.SetTimezone)
+				r.Put("/system/time/ntp", a.SetNTP)
+				r.Post("/system/packages/update", a.AptUpdate)
+				r.Post("/system/power", a.Power)
+			})
+		})
+	})
+
+	// Frontend (SPA) als Fallback für alle übrigen Pfade.
+	r.NotFound(web.SPAHandler().ServeHTTP)
+
+	return r
+}
+
+// securityHeaders setzt defensive HTTP-Header analog zur KIS-Oberfläche.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// devCORS erlaubt im Entwicklungsmodus Requests des Vite-Dev-Servers.
+func devCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		h.Set("Access-Control-Allow-Credentials", "true")
+		h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		h.Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

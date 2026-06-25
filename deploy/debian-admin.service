@@ -1,0 +1,36 @@
+# systemd-Unit für den Debian-Admin-Dienst.
+# Installation:
+#   sudo cp bin/debian-admin /usr/local/bin/
+#   sudo cp deploy/debian-admin.service /etc/systemd/system/
+#   sudo cp deploy/debian-admin.pam /etc/pam.d/debian-admin
+#   sudo systemctl daemon-reload && sudo systemctl enable --now debian-admin
+#
+# Der Dienst läuft als root, da administrative Aktionen (useradd, systemctl,
+# timedatectl …) und PAM-Authentifizierung erhöhte Rechte benötigen. In
+# Produktion sollte ein Reverse-Proxy (nginx/caddy) TLS terminieren.
+
+[Unit]
+Description=Debian Admin – Web-Administrationsoberfläche
+After=network.target
+Documentation=https://github.com/clinictools/setup
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/debian-admin
+Restart=on-failure
+RestartSec=3
+
+# Authentifizierung gegen einen eigenen PAM-Stack (siehe debian-admin.pam).
+Environment=DA_ADDR=:8088
+Environment=DA_PAM_SERVICE=debian-admin
+Environment=DA_ADMIN_GROUPS=sudo,admin
+# Session-Secret in Produktion fest setzen, damit Neustarts Sessions erhalten:
+# Environment=DA_SESSION_SECRET=<zufälliger-32-byte-hex-wert>
+
+# Defensive Härtung (so weit mit root-Aufgaben vereinbar).
+NoNewPrivileges=false
+ProtectHome=false
+ProtectSystem=false
+
+[Install]
+WantedBy=multi-user.target

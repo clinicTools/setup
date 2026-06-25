@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "groups": {
+      "system": "System",
+      "accounts": "Accounts",
+      "connections": "Connections",
+      "devices": "Devices",
+      "apps": "Apps",
+      "container": "Container",
+      "security": "Security",
+      "tasks": "Tasks",
+      "time": "Time & Language",
+      "diagnostics": "Diagnostics"
+    },
+    "items": {
+      "dashboard": "Overview",
+      "processes": "Processes",
+      "services": "Services",
+      "users": "Users & Groups",
+      "network": "Network",
+      "storage": "Storage",
+      "packages": "Packages & Updates",
+      "k3s": "k3s (Kubernetes)",
+      "firewall": "Firewall",
+      "audit": "Audit Log",
+      "scheduled": "Scheduled Tasks",
+      "datetime": "Date & Time",
+      "logs": "System Logs"
+    }
+  },
+  "common": {
+    "refresh": "Refresh",
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "delete": "Delete",
+    "add": "Add",
+    "loading": "Loading …",
+    "search": "Search"
+  },
+  "connection": {
+    "live": "Live",
+    "connecting": "Connecting …",
+    "disconnected": "Disconnected"
+  },
+  "shell": {
+    "subtitle": "System administration",
+    "searchSetting": "Search settings",
+    "administrator": "Administrator",
+    "user": "User",
+    "logout": "Sign out",
+    "lightTheme": "Light theme",
+    "darkTheme": "Dark theme",
+    "power": "Power options",
+    "rebootTitle": "Reboot system?",
+    "rebootMessage": "All running services will be stopped gracefully and the system will reboot.",
+    "rebootConfirm": "Reboot"
+  },
+  "login": {
+    "subtitle": "Sign in with your operating-system account",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in …",
+    "pamNote": "Authentication uses PAM against the operating system.",
+    "failed": "Sign-in failed"
+  },
+  "dashboard": {
+    "title": "Overview",
+    "description": "Status and key facts of this Debian system"
+  }
+}

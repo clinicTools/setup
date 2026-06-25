@@ -17,25 +17,26 @@ import {
 
 export interface NavItem {
   to: string;
-  label: string;
+  /** i18n-Schlüssel des Labels (nav.items.*). */
+  labelKey: string;
   icon: Component;
-  /** Gruppenüberschrift in der Navigationsleiste. */
-  group: string;
+  /** i18n-Schlüssel der Gruppenüberschrift (nav.groups.*). */
+  groupKey: string;
 }
 
 // Navigationsstruktur — gruppiert wie in den Windows-11-Einstellungen.
 export const navItems: NavItem[] = [
-  { to: "/", label: "Übersicht", icon: LayoutDashboard, group: "System" },
-  { to: "/processes", label: "Prozesse", icon: Activity, group: "System" },
-  { to: "/services", label: "Dienste", icon: Cog, group: "System" },
-  { to: "/users", label: "Benutzer & Gruppen", icon: Users, group: "Konten" },
-  { to: "/network", label: "Netzwerk", icon: Network, group: "Verbindungen" },
-  { to: "/storage", label: "Speicher", icon: HardDrive, group: "Geräte" },
-  { to: "/packages", label: "Pakete & Updates", icon: Package, group: "Apps" },
-  { to: "/k3s", label: "k3s (Kubernetes)", icon: Boxes, group: "Container" },
-  { to: "/firewall", label: "Firewall", icon: ShieldCheck, group: "Sicherheit" },
-  { to: "/audit", label: "Audit-Protokoll", icon: ClipboardList, group: "Sicherheit" },
-  { to: "/scheduled", label: "Geplante Aufgaben", icon: CalendarClock, group: "Aufgaben" },
-  { to: "/datetime", label: "Datum & Uhrzeit", icon: Clock, group: "Zeit & Sprache" },
-  { to: "/logs", label: "Systemprotokolle", icon: ScrollText, group: "Diagnose" },
+  { to: "/", labelKey: "dashboard", icon: LayoutDashboard, groupKey: "system" },
+  { to: "/processes", labelKey: "processes", icon: Activity, groupKey: "system" },
+  { to: "/services", labelKey: "services", icon: Cog, groupKey: "system" },
+  { to: "/users", labelKey: "users", icon: Users, groupKey: "accounts" },
+  { to: "/network", labelKey: "network", icon: Network, groupKey: "connections" },
+  { to: "/storage", labelKey: "storage", icon: HardDrive, groupKey: "devices" },
+  { to: "/packages", labelKey: "packages", icon: Package, groupKey: "apps" },
+  { to: "/k3s", labelKey: "k3s", icon: Boxes, groupKey: "container" },
+  { to: "/firewall", labelKey: "firewall", icon: ShieldCheck, groupKey: "security" },
+  { to: "/audit", labelKey: "audit", icon: ClipboardList, groupKey: "security" },
+  { to: "/scheduled", labelKey: "scheduled", icon: CalendarClock, groupKey: "tasks" },
+  { to: "/datetime", labelKey: "datetime", icon: Clock, groupKey: "time" },
+  { to: "/logs", labelKey: "logs", icon: ScrollText, groupKey: "diagnostics" },
 ];

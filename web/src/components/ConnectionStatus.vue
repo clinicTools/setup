@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Wifi, WifiOff, Loader2 } from "lucide-vue-next";
+import { useI18n } from "vue-i18n";
 import { ws } from "@/lib/ws";
 
 // Spiegelt den Live-Verbindungsstatus (analog zur Cockpit-Statusanzeige).
+const { t } = useI18n();
 const status = ws.status;
 const label = computed(
-  () => ({ open: "Live", connecting: "Verbinde …", closed: "Getrennt" })[status.value],
+  () =>
+    ({
+      open: t("connection.live"),
+      connecting: t("connection.connecting"),
+      closed: t("connection.disconnected"),
+    })[status.value],
 );
 </script>
 

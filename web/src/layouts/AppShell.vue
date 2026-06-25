@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   Search,
   Sun,
@@ -19,10 +20,12 @@ import { cn } from "@/lib/utils";
 import Button from "@/components/ui/Button.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import ConnectionStatus from "@/components/ConnectionStatus.vue";
+import LanguageSwitcher from "@/components/LanguageSwitcher.vue";
 
 const route = useRoute();
 const router = useRouter();
 const { theme, toggle } = useTheme();
+const { t } = useI18n();
 const toast = useToast();
 const auth = useAuthStore();
 
@@ -32,11 +35,13 @@ const sidebarOpen = ref(false);
 // Navigationssuche (Windows-11-Einstellungen: Suchfeld über der Navigation).
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
-  const items = q ? navItems.filter((i) => i.label.toLowerCase().includes(q)) : navItems;
+  const items = q
+    ? navItems.filter((i) => t(`nav.items.${i.labelKey}`).toLowerCase().includes(q))
+    : navItems;
   const groups = new Map<string, typeof navItems>();
   for (const item of items) {
-    if (!groups.has(item.group)) groups.set(item.group, []);
-    groups.get(item.group)!.push(item);
+    if (!groups.has(item.groupKey)) groups.set(item.groupKey, []);
+    groups.get(item.groupKey)!.push(item);
   }
   return groups;
 });
@@ -83,7 +88,7 @@ const initials = computed(() => {
         </div>
         <div class="leading-tight">
           <div class="text-sm font-semibold">Debian Admin</div>
-          <div class="text-[11px] text-muted-foreground">Systemverwaltung</div>
+          <div class="text-[11px] text-muted-foreground">{{ t("shell.subtitle") }}</div>
         </div>
       </div>
 
@@ -93,7 +98,7 @@ const initials = computed(() => {
           <input
             v-model="search"
             type="search"
-            placeholder="Einstellung suchen"
+            :placeholder="t('shell.searchSetting')"
             class="h-9 w-full rounded-md border border-input bg-card pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -102,7 +107,7 @@ const initials = computed(() => {
       <nav class="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-3 py-2">
         <div v-for="[group, items] in filtered" :key="group">
           <div class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {{ group }}
+            {{ t(`nav.groups.${group}`) }}
           </div>
           <RouterLink
             v-for="item in items"
@@ -122,7 +127,7 @@ const initials = computed(() => {
               class="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary"
             />
             <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" />
-            <span class="truncate">{{ item.label }}</span>
+            <span class="truncate">{{ t(`nav.items.${item.labelKey}`) }}</span>
           </RouterLink>
         </div>
       </nav>
@@ -136,10 +141,10 @@ const initials = computed(() => {
           <div class="min-w-0 flex-1 leading-tight">
             <div class="truncate text-sm font-medium">{{ auth.user?.fullName || auth.user?.username }}</div>
             <div class="truncate text-[11px] text-muted-foreground">
-              {{ auth.user?.admin ? "Administrator" : "Benutzer" }}
+              {{ auth.user?.admin ? t("shell.administrator") : t("shell.user") }}
             </div>
           </div>
-          <Button variant="ghost" size="icon" title="Abmelden" @click="doLogout">
+          <Button variant="ghost" size="icon" :title="t('shell.logout')" @click="doLogout">
             <LogOut class="h-4 w-4" />
           </Button>
         </div>
@@ -161,7 +166,8 @@ const initials = computed(() => {
         </Button>
         <div class="flex-1" />
         <ConnectionStatus />
-        <Button variant="ghost" size="icon" :title="theme === 'dark' ? 'Helles Design' : 'Dunkles Design'" @click="toggle">
+        <LanguageSwitcher />
+        <Button variant="ghost" size="icon" :title="theme === 'dark' ? t('shell.lightTheme') : t('shell.darkTheme')" @click="toggle">
           <Sun v-if="theme === 'dark'" class="h-4 w-4" />
           <Moon v-else class="h-4 w-4" />
         </Button>
@@ -169,7 +175,7 @@ const initials = computed(() => {
           v-if="auth.user?.admin"
           variant="ghost"
           size="icon"
-          title="Energieoptionen"
+          :title="t('shell.power')"
           @click="powerDialog = 'reboot'"
         >
           <Power class="h-4 w-4" />
@@ -185,9 +191,9 @@ const initials = computed(() => {
 
     <ConfirmDialog
       :open="powerDialog !== null"
-      title="System neu starten?"
-      message="Alle laufenden Dienste werden ordnungsgemäß beendet und das System startet neu."
-      confirm-label="Neu starten"
+      :title="t('shell.rebootTitle')"
+      :message="t('shell.rebootMessage')"
+      :confirm-label="t('shell.rebootConfirm')"
       destructive
       @confirm="confirmPower"
       @cancel="powerDialog = null"

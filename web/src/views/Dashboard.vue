@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import {
   Cpu,
   MemoryStick,
@@ -21,6 +22,7 @@ import DataState from "@/components/DataState.vue";
 import UsageBar from "@/components/UsageBar.vue";
 import Sparkline from "@/components/Sparkline.vue";
 
+const { t } = useI18n();
 const { data: info, loading, error } = useAsyncData(() => api.info());
 const { data: pkg } = useAsyncData(() => api.packages());
 const { data: storage } = useAsyncData(() => api.storage());
@@ -56,9 +58,9 @@ const rootFs = computed(() =>
 <template>
   <div>
     <PageHeader
-      title="Übersicht"
-      description="Status und Eckdaten dieses Debian-Systems"
-      :breadcrumb="['System', 'Übersicht']"
+      :title="t('dashboard.title')"
+      :description="t('dashboard.description')"
+      :breadcrumb="[t('nav.groups.system'), t('dashboard.title')]"
     />
 
     <DataState :loading="loading" :error="error">

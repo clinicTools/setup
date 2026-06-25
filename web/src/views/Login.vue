@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { Server, Loader2, Sun, Moon } from "lucide-vue-next";
 import { useAuthStore } from "@/stores/auth";
 import { useTheme } from "@/composables/useTheme";
 import { ApiError } from "@/lib/api";
+import LanguageSwitcher from "@/components/LanguageSwitcher.vue";
 import Button from "@/components/ui/Button.vue";
 import Input from "@/components/ui/Input.vue";
 
@@ -12,6 +14,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const { theme, toggle } = useTheme();
+const { t } = useI18n();
 
 const username = ref("");
 const password = ref("");
@@ -26,7 +29,7 @@ async function submit(): Promise<void> {
     const redirect = (route.query.redirect as string) || "/";
     router.push(redirect);
   } catch (e) {
-    error.value = e instanceof ApiError ? e.message : "Anmeldung fehlgeschlagen";
+    error.value = e instanceof ApiError ? e.message : t("login.failed");
   } finally {
     loading.value = false;
   }
@@ -35,10 +38,13 @@ async function submit(): Promise<void> {
 
 <template>
   <div class="relative flex min-h-full items-center justify-center bg-background p-4">
-    <Button variant="ghost" size="icon" class="absolute right-4 top-4" @click="toggle">
-      <Sun v-if="theme === 'dark'" class="h-4 w-4" />
-      <Moon v-else class="h-4 w-4" />
-    </Button>
+    <div class="absolute right-4 top-4 flex items-center gap-1">
+      <LanguageSwitcher />
+      <Button variant="ghost" size="icon" @click="toggle">
+        <Sun v-if="theme === 'dark'" class="h-4 w-4" />
+        <Moon v-else class="h-4 w-4" />
+      </Button>
+    </div>
 
     <div class="w-full max-w-sm">
       <div class="mb-6 flex flex-col items-center text-center">
@@ -47,7 +53,7 @@ async function submit(): Promise<void> {
         </div>
         <h1 class="text-xl font-semibold tracking-tight">Debian Admin</h1>
         <p class="mt-1 text-sm text-muted-foreground">
-          Anmeldung mit Ihrem Systembenutzerkonto
+          {{ t("login.subtitle") }}
         </p>
       </div>
 
@@ -56,11 +62,11 @@ async function submit(): Promise<void> {
         @submit.prevent="submit"
       >
         <div class="space-y-1.5">
-          <label for="username" class="text-sm font-medium">Benutzername</label>
-          <Input id="username" v-model="username" placeholder="z. B. root" autocomplete="username" />
+          <label for="username" class="text-sm font-medium">{{ t("login.username") }}</label>
+          <Input id="username" v-model="username" placeholder="root" autocomplete="username" />
         </div>
         <div class="space-y-1.5">
-          <label for="password" class="text-sm font-medium">Passwort</label>
+          <label for="password" class="text-sm font-medium">{{ t("login.password") }}</label>
           <Input id="password" v-model="password" type="password" autocomplete="current-password" />
         </div>
 
@@ -75,12 +81,12 @@ async function submit(): Promise<void> {
           :disabled="loading || !username || !password"
         >
           <Loader2 v-if="loading" class="h-4 w-4 animate-spin" />
-          <span>{{ loading ? "Anmeldung läuft …" : "Anmelden" }}</span>
+          <span>{{ loading ? t("login.submitting") : t("login.submit") }}</span>
         </Button>
       </form>
 
       <p class="mt-4 text-center text-xs text-muted-foreground">
-        Die Authentifizierung erfolgt über PAM gegen das Betriebssystem.
+        {{ t("login.pamNote") }}
       </p>
     </div>
   </div>

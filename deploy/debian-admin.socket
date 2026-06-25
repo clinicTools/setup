@@ -1,0 +1,21 @@
+# systemd-Socket für Socket-Activation (Cockpit-Modell).
+# Mit dieser Unit startet der Dienst erst bei der ersten Verbindung und beendet
+# sich — bei gesetztem DA_IDLE_TIMEOUT — nach Ablauf der Inaktivität wieder.
+#
+# Installation:
+#   sudo cp deploy/debian-admin.socket /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now debian-admin.socket
+#
+# Anschließend NICHT debian-admin.service aktivieren — das Socket startet ihn
+# bei Bedarf. In debian-admin.service sollte DA_IDLE_TIMEOUT gesetzt sein.
+
+[Unit]
+Description=Debian Admin – Socket (Socket-Activation)
+
+[Socket]
+ListenStream=8088
+# Mehrere Verbindungen teilen sich eine Dienstinstanz (kein per-Connection-Spawn).
+Accept=no
+
+[Install]
+WantedBy=sockets.target

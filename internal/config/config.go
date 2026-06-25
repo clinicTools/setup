@@ -29,6 +29,10 @@ type Config struct {
 	AllowInsecureCookie bool
 	// Dev aktiviert CORS für den Vite-Dev-Server (Port 5173).
 	Dev bool
+	// IdleTimeout beendet den Prozess, wenn so lange keine Verbindung/Aktivität
+	// vorliegt (0 = deaktiviert). In Kombination mit systemd-Socket-Activation
+	// ergibt sich das Cockpit-Verhalten „läuft nur bei Verbindung".
+	IdleTimeout time.Duration
 }
 
 // Load liest die Konfiguration aus der Umgebung.
@@ -40,6 +44,7 @@ func Load() *Config {
 		AdminGroups:         envList("DA_ADMIN_GROUPS", "sudo,admin,wheel"),
 		AllowInsecureCookie: envBool("DA_ALLOW_INSECURE_COOKIE", false),
 		Dev:                 envBool("DA_DEV", false),
+		IdleTimeout:         envDuration("DA_IDLE_TIMEOUT", 0),
 	}
 
 	if secret := os.Getenv("DA_SESSION_SECRET"); secret != "" {

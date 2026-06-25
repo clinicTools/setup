@@ -10,22 +10,29 @@ import (
 	"github.com/clinictools/setup/internal/auth"
 	"github.com/clinictools/setup/internal/config"
 	"github.com/clinictools/setup/internal/web"
+	"github.com/clinictools/setup/internal/ws"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// New baut den vollständigen HTTP-Handler des Dienstes.
-func New(cfg *config.Config) http.Handler {
+// New baut den vollständigen HTTP-Handler des Dienstes und liefert zusätzlich
+// den Activity-Tracker zurück, über den der Aufrufer (main) einen Cockpit-
+// artigen Idle-Shutdown realisieren kann.
+func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 	authn := auth.NewAuthenticator(cfg.PAMService, cfg.AdminGroups)
 	sessions := auth.NewSessionManager(cfg.SessionSecret, cfg.SessionTTL, !cfg.AllowInsecureCookie)
 	a := api.New(authn, sessions)
+
+	activity := ws.NewActivity()
+	wsHandler := ws.NewHandler(ws.DefaultRegistry(), activity, cfg.Dev)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(securityHeaders)
+	// Jede HTTP-Aktivität verlängert das Idle-Fenster.
+	r.Use(activityMiddleware(activity))
 
 	if cfg.Dev {
 		r.Use(devCORS)
@@ -43,10 +50,18 @@ func New(cfg *config.Config) http.Handler {
 		// Geschützte Endpunkte (gültige Session erforderlich).
 		r.Group(func(r chi.Router) {
 			r.Use(sessions.Middleware)
-			r.Get("/auth/me", a.Me)
 
-			// Lesende System-Endpunkte.
-			r.Get("/system/info", a.Info)
+			// Live-WebSocket (gemultiplexte Channels). KEIN Request-Timeout,
+			// da die Verbindung langlebig ist.
+			r.Get("/ws", wsHandler.ServeHTTP)
+
+			// REST-Endpunkte mit 60-Sekunden-Timeout.
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.Timeout(60 * time.Second))
+				r.Get("/auth/me", a.Me)
+
+				// Lesende System-Endpunkte.
+				r.Get("/system/info", a.Info)
 			r.Get("/system/users", a.Users)
 			r.Get("/system/groups", a.Groups)
 			r.Get("/system/services", a.Services)
@@ -75,13 +90,25 @@ func New(cfg *config.Config) http.Handler {
 				r.Post("/system/packages/update", a.AptUpdate)
 				r.Post("/system/power", a.Power)
 			})
+			}) // Ende REST-Timeout-Gruppe
 		})
 	})
 
 	// Frontend (SPA) als Fallback für alle übrigen Pfade.
 	r.NotFound(web.SPAHandler().ServeHTTP)
 
-	return r
+	return r, activity
+}
+
+// activityMiddleware markiert jede HTTP-Anfrage als Aktivität, damit der
+// Idle-Shutdown nur bei tatsächlicher Inaktivität greift.
+func activityMiddleware(a *ws.Activity) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			a.Touch()
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // securityHeaders setzt defensive HTTP-Header analog zur KIS-Oberfläche.

@@ -18,6 +18,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import Button from "@/components/ui/Button.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import ConnectionStatus from "@/components/ConnectionStatus.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -159,6 +160,7 @@ const initials = computed(() => {
           <Menu class="h-5 w-5" />
         </Button>
         <div class="flex-1" />
+        <ConnectionStatus />
         <Button variant="ghost" size="icon" :title="theme === 'dark' ? 'Helles Design' : 'Dunkles Design'" @click="toggle">
           <Sun v-if="theme === 'dark'" class="h-4 w-4" />
           <Moon v-else class="h-4 w-4" />

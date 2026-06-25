@@ -24,6 +24,10 @@ RestartSec=3
 Environment=DA_ADDR=:8088
 Environment=DA_PAM_SERVICE=debian-admin
 Environment=DA_ADMIN_GROUPS=sudo,admin
+# Cockpit-Modell: Bei Socket-Activation (debian-admin.socket) beendet sich der
+# Dienst nach dieser Inaktivität und wird bei der nächsten Verbindung neu
+# gestartet. Ohne Socket-Activation einfach weglassen (Dauerbetrieb).
+# Environment=DA_IDLE_TIMEOUT=90s
 # Session-Secret in Produktion fest setzen, damit Neustarts Sessions erhalten:
 # Environment=DA_SESSION_SECRET=<zufälliger-32-byte-hex-wert>
 

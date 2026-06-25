@@ -165,6 +165,21 @@ export interface TimeInfo {
   rtcInLocalTime: boolean;
 }
 
+export interface NetRate {
+  name: string;
+  rxRate: number;
+  txRate: number;
+}
+
+export interface MetricsSample {
+  timestamp: number;
+  cpuPercent: number;
+  memory: MemoryInfo;
+  swap: MemoryInfo;
+  loadAvg: [number, number, number];
+  interfaces: NetRate[];
+}
+
 export interface Process {
   pid: number;
   ppid: number;

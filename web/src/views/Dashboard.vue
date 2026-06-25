@@ -12,15 +12,33 @@ import {
 } from "lucide-vue-next";
 import { api } from "@/lib/api";
 import { useAsyncData } from "@/composables/useAsyncData";
+import { useChannel } from "@/composables/useChannel";
 import { formatBytes, formatUptime } from "@/lib/utils";
+import type { MetricsSample } from "@/lib/types";
 import PageHeader from "@/components/PageHeader.vue";
 import StatCard from "@/components/StatCard.vue";
 import DataState from "@/components/DataState.vue";
 import UsageBar from "@/components/UsageBar.vue";
+import Sparkline from "@/components/Sparkline.vue";
 
 const { data: info, loading, error } = useAsyncData(() => api.info());
 const { data: pkg } = useAsyncData(() => api.packages());
 const { data: storage } = useAsyncData(() => api.storage());
+
+// Live-Kennzahlen über den WebSocket-Channel „metrics" (läuft nur, solange
+// das Dashboard offen ist).
+const { data: metrics, history } = useChannel<MetricsSample>("metrics", { buffer: 60 });
+const cpuSeries = computed(() => history.value.map((m) => m.cpuPercent));
+const memSeries = computed(() =>
+  history.value.map((m) => (m.memory.total ? (m.memory.used / m.memory.total) * 100 : 0)),
+);
+const netTotalRate = computed(() =>
+  (metrics.value?.interfaces ?? []).reduce((sum, i) => sum + i.rxRate + i.txRate, 0),
+);
+const liveMemPercent = computed(() => {
+  const m = metrics.value?.memory;
+  return m && m.total ? (m.used / m.total) * 100 : 0;
+});
 
 const memPercent = computed(() => {
   const m = info.value?.memory;
@@ -61,10 +79,11 @@ const rootFs = computed(() =>
             :icon="Clock"
           />
           <StatCard
-            label="CPU-Last (1 min)"
-            :value="info.loadAvg[0].toFixed(2)"
-            :sub="`${info.cpuCores} Kerne`"
+            label="CPU-Auslastung"
+            :value="metrics ? `${metrics.cpuPercent.toFixed(0)} %` : info.loadAvg[0].toFixed(2)"
+            :sub="`${info.cpuCores} Kerne · Last ${info.loadAvg[0].toFixed(2)}`"
             :icon="Gauge"
+            accent
           />
           <StatCard
             label="Updates"
@@ -73,6 +92,48 @@ const rootFs = computed(() =>
             :icon="Package"
             accent
           />
+        </div>
+
+        <!-- Live-Auslastung (WebSocket) -->
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-sm font-semibold">CPU</h2>
+              <span class="text-2xl font-semibold tabular-nums">
+                {{ metrics ? `${metrics.cpuPercent.toFixed(0)} %` : "—" }}
+              </span>
+            </div>
+            <Sparkline class="mt-3 w-full" :values="cpuSeries" :max="100" :width="240" :height="44" />
+          </div>
+
+          <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-sm font-semibold">Arbeitsspeicher</h2>
+              <span class="text-2xl font-semibold tabular-nums">
+                {{ metrics ? `${liveMemPercent.toFixed(0)} %` : "—" }}
+              </span>
+            </div>
+            <Sparkline class="mt-3 w-full" :values="memSeries" :max="100" :width="240" :height="44" />
+          </div>
+
+          <div class="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <div class="flex items-baseline justify-between">
+              <h2 class="text-sm font-semibold">Netzwerk</h2>
+              <span class="text-lg font-semibold tabular-nums">
+                {{ metrics ? `${formatBytes(netTotalRate)}/s` : "—" }}
+              </span>
+            </div>
+            <div class="mt-3 space-y-1">
+              <div
+                v-for="iface in metrics?.interfaces || []"
+                :key="iface.name"
+                class="flex justify-between text-xs text-muted-foreground"
+              >
+                <span class="font-mono">{{ iface.name }}</span>
+                <span>↓ {{ formatBytes(iface.rxRate) }}/s · ↑ {{ formatBytes(iface.txRate) }}/s</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Ressourcen -->

@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { RotateCw, Search } from "lucide-vue-next";
+import { ref, computed, watch, onUnmounted } from "vue";
+import { RotateCw, Search, Play, Pause } from "lucide-vue-next";
 import { api } from "@/lib/api";
+import { ws } from "@/lib/ws";
 import { useAsyncData } from "@/composables/useAsyncData";
 import { formatDateTime } from "@/lib/utils";
+import type { LogEntry } from "@/lib/types";
 import PageHeader from "@/components/PageHeader.vue";
 import DataState from "@/components/DataState.vue";
 import Button from "@/components/ui/Button.vue";
@@ -15,6 +17,38 @@ const lines = ref(200);
 const { data, loading, error, reload } = useAsyncData(() =>
   api.logs({ unit: unit.value || undefined, priority: priority.value || undefined, lines: lines.value }),
 );
+
+// Live-Follow (journalctl -f) über den WebSocket-Channel „journal".
+const live = ref(false);
+const liveEntries = ref<LogEntry[]>([]);
+let unsub: (() => void) | null = null;
+
+function startLive(): void {
+  stopLive();
+  liveEntries.value = [];
+  unsub = ws.subscribe(
+    "journal",
+    { unit: unit.value || undefined, priority: priority.value || undefined, lines: 50 },
+    (payload) => {
+      liveEntries.value.push(payload as LogEntry);
+      if (liveEntries.value.length > 1000) {
+        liveEntries.value.splice(0, liveEntries.value.length - 1000);
+      }
+    },
+  );
+}
+function stopLive(): void {
+  unsub?.();
+  unsub = null;
+}
+
+watch(live, (v) => (v ? startLive() : stopLive()));
+watch([unit, priority], () => {
+  if (live.value) startLive();
+});
+onUnmounted(stopLive);
+
+const displayed = computed<LogEntry[]>(() => (live.value ? liveEntries.value : data.value || []));
 
 // Farbliche Hervorhebung nach syslog-Priorität (0=emerg … 7=debug).
 function priorityClass(p: number): string {
@@ -37,7 +71,16 @@ const priorityLabels: Record<number, string> = {
       :breadcrumb="['Diagnose', 'Systemprotokolle']"
     >
       <template #actions>
-        <Button variant="outline" size="sm" @click="reload">
+        <Button
+          :variant="live ? 'primary' : 'outline'"
+          size="sm"
+          @click="live = !live"
+        >
+          <Pause v-if="live" class="h-4 w-4" />
+          <Play v-else class="h-4 w-4" />
+          {{ live ? "Live aktiv" : "Live-Verfolgung" }}
+        </Button>
+        <Button variant="outline" size="sm" :disabled="live" @click="reload">
           <RotateCw class="h-4 w-4" /> Aktualisieren
         </Button>
       </template>
@@ -67,10 +110,25 @@ const priorityLabels: Record<number, string> = {
       <Button variant="secondary" size="sm" @click="reload">Anwenden</Button>
     </div>
 
-    <DataState :loading="loading" :error="error" :empty="(data?.length ?? 0) === 0">
-      <div class="scrollbar-thin overflow-x-auto rounded-xl border border-border bg-card font-mono text-xs shadow-sm">
+    <DataState
+      :loading="loading && !live"
+      :error="error"
+      :empty="!live && displayed.length === 0"
+      empty-text="Keine Protokolleinträge. Aktiviere die Live-Verfolgung, um neue Einträge zu sehen."
+    >
+      <div class="scrollbar-thin max-h-[70vh] overflow-y-auto overflow-x-auto rounded-xl border border-border bg-card font-mono text-xs shadow-sm">
         <div
-          v-for="(entry, i) in data || []"
+          v-if="live"
+          class="sticky top-0 flex items-center gap-2 border-b border-border bg-card/95 px-4 py-1.5 text-[11px] font-medium text-success backdrop-blur"
+        >
+          <span class="relative flex h-2 w-2">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
+          Live — folgt dem Journal ({{ displayed.length }} Einträge)
+        </div>
+        <div
+          v-for="(entry, i) in displayed"
           :key="i"
           class="flex items-start gap-3 border-b border-border/40 px-4 py-1.5 last:border-0 hover:bg-accent/40"
         >

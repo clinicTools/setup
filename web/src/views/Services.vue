@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { Play, Square, RotateCw, Search } from "lucide-vue-next";
 import { api } from "@/lib/api";
 import { useAsyncData } from "@/composables/useAsyncData";
+import { useChannel } from "@/composables/useChannel";
 import { useToast } from "@/composables/useToast";
 import { useAuthStore } from "@/stores/auth";
 import type { Service } from "@/lib/types";
@@ -12,6 +13,8 @@ import Button from "@/components/ui/Button.vue";
 import Badge from "@/components/ui/Badge.vue";
 
 const { data, loading, error, reload } = useAsyncData(() => api.services());
+// Live-Aktualisierung des Dienst-Status (alle 3 s, solange die Seite offen ist).
+const { data: liveServices } = useChannel<Service[]>("services");
 const toast = useToast();
 const auth = useAuthStore();
 
@@ -20,7 +23,7 @@ const onlyActive = ref(false);
 const busy = ref<string | null>(null);
 
 const filtered = computed<Service[]>(() => {
-  const list = data.value ?? [];
+  const list = liveServices.value ?? data.value ?? [];
   const q = query.value.trim().toLowerCase();
   return list.filter((s) => {
     if (onlyActive.value && s.activeState !== "active") return false;

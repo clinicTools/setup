@@ -28,11 +28,41 @@ Titel + Beschreibung + rechtsbündiger Aktion, gruppierte Abschnitte).
 | **Firewall** | UFW-Status & -Regeln, Aktivieren/Deaktivieren |
 | **Geplante Aufgaben** | systemd-Timer und Cron-Jobs |
 | **Datum & Uhrzeit** | Zeitzone setzen, NTP-Synchronisation umschalten |
-| **Systemprotokolle** | journald-Einträge mit Unit-/Prioritätsfilter |
+| **Systemprotokolle** | journald-Einträge mit Unit-/Prioritätsfilter, **Live-Verfolgung** (`journalctl -f`) |
 | **Energie** | Neustart / Herunterfahren (nur Admins) |
 
 Lesende Endpunkte stehen allen angemeldeten Benutzern offen; **schreibende
 Aktionen sind auf Admin-Gruppen beschränkt** (serverseitig erzwungen).
+
+### Live-Updates über WebSocket (Cockpit-Modell)
+
+Eine **einzige, gemultiplexte WebSocket-Verbindung** (`/api/ws`) trägt beliebig
+viele „Channels". Wie bei Cockpit läuft der serverseitige Collector eines
+Channels **ausschließlich, solange eine Subscription besteht** — wird sie beendet
+oder bricht die Verbindung ab, stoppt die Goroutine (und ggf. ihr Subprozess wie
+`journalctl -f`) sofort. Im Frontend abonniert das `useChannel`-Composable beim
+Mounten und kündigt beim Unmounten — der Stream läuft also nur, solange die Seite
+offen ist.
+
+| Channel | Inhalt | Takt |
+|---------|--------|------|
+| `metrics` | CPU-%, RAM, Swap, Last, Netzdurchsatz je Schnittstelle (aus `/proc`-Deltas) | 1 s |
+| `journal` | Live-Log-Stream (`journalctl -f`), Subprozess nur bei aktiver Subscription | Ereignis |
+| `services` | systemd-Dienststatus | 3 s |
+| `processes` | Top-Prozesse nach Speicher | 2 s |
+
+Verwendet im **Dashboard** (Live-Kacheln + Sparklines), in den **Systemprotokollen**
+(Live-Verfolgung) und bei den **Diensten** (Live-Status). Eine Statusanzeige in
+der Kopfzeile zeigt den Verbindungszustand; Reconnect erfolgt automatisch.
+
+### Socket-Activation & Idle-Shutdown (wie Cockpit)
+
+Der Dienst unterstützt **systemd-Socket-Activation** (`activation.Listeners()`)
+und einen optionalen **Idle-Shutdown**: Ist `DA_IDLE_TIMEOUT` gesetzt und besteht
+für diese Dauer keine Verbindung/HTTP-Aktivität, beendet sich der Prozess. In
+Kombination mit `debian-admin.socket` ergibt sich exakt Cockpits Verhalten —
+„läuft nur, solange jemand verbunden ist" — und der Dienst startet bei der
+nächsten Verbindung automatisch neu (siehe `deploy/`).
 
 ## Architektur
 
@@ -116,6 +146,7 @@ Reverse-Proxy (nginx/caddy) sollte **TLS** terminieren.
 | `DA_SESSION_TTL` | `8h` | Session-Gültigkeit |
 | `DA_ALLOW_INSECURE_COOKIE` | `false` | Cookie ohne `Secure` (nur Dev/HTTP) |
 | `DA_DEV` | `false` | CORS für den Vite-Dev-Server aktivieren |
+| `DA_IDLE_TIMEOUT` | `0` (aus) | Idle-Shutdown nach Inaktivität (z. B. `90s`), für Socket-Activation |
 
 ## Tests
 

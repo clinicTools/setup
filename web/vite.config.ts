@@ -23,6 +23,7 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:8088",
         changeOrigin: true,
+        ws: true, // WebSocket-Upgrade (/api/ws) durchreichen
       },
     },
   },

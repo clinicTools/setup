@@ -29,10 +29,38 @@ Titel + Beschreibung + rechtsbündiger Aktion, gruppierte Abschnitte).
 | **Geplante Aufgaben** | systemd-Timer und Cron-Jobs |
 | **Datum & Uhrzeit** | Zeitzone setzen, NTP-Synchronisation umschalten |
 | **Systemprotokolle** | journald-Einträge mit Unit-/Prioritätsfilter, **Live-Verfolgung** (`journalctl -f`) |
+| **k3s (Kubernetes)** | Cluster **installieren** (Live-Log), Status, Knoten/Pods, Kubeconfig, Join-Token, Deinstallation |
+| **Audit-Protokoll** | Nachvollziehbare Aufzeichnung aller administrativen Aktionen |
 | **Energie** | Neustart / Herunterfahren (nur Admins) |
 
 Lesende Endpunkte stehen allen angemeldeten Benutzern offen; **schreibende
 Aktionen sind auf Admin-Gruppen beschränkt** (serverseitig erzwungen).
+
+Erweiterte Aktionen pro Modul: **Pakete** install/remove/`upgrade` (als Live-Jobs),
+**Dienste** enable/disable, **Prozesse** beenden (TERM/KILL), **Firewall**-Regeln
+hinzufügen/löschen, **Benutzer** bearbeiten + **Gruppen** anlegen/löschen,
+**Cron**-Jobs anlegen/löschen, **Netzwerk** Hostname/Interface-Status.
+
+### Langlaufende Vorgänge (Jobs)
+
+`apt`-Aktionen und die k3s-Installation laufen als **asynchrone Jobs**: der
+Subprozess wird gestartet und seine Ausgabe **zeilenweise live über den
+WebSocket-Channel `jobs`** an eine Terminal-artige Konsole im Frontend gestreamt
+(mit Abbrechen-Funktion) — kein 30-Sekunden-Timeout.
+
+### Sicherheit
+
+- **Audit-Log** aller Schreibaktionen (RAM-Ringpuffer + optionale Datei `DA_AUDIT_LOG`)
+- **Login-Rate-Limiting** (5 Fehlversuche / 5 min → 15 min Sperre je Benutzer+IP)
+- **CSRF-Schutz** (Double-Submit-Cookie) für alle mutierenden Anfragen
+- **Eingebautes TLS** optional über `DA_TLS_CERT`/`DA_TLS_KEY`
+
+### Mehrsprachigkeit (i18n)
+
+`vue-i18n` mit **Deutsch** (Domänensprache, Fallback) und **Englisch**;
+Sprachumschalter in der Kopfzeile. Die Navigations-/Anwendungshülle ist
+vollständig übersetzt; modulspezifische Inhalte folgen der Domänensprache Deutsch
+und lassen sich über das etablierte Schlüsselschema inkrementell migrieren.
 
 ### Live-Updates über WebSocket (Cockpit-Modell)
 
@@ -147,6 +175,8 @@ Reverse-Proxy (nginx/caddy) sollte **TLS** terminieren.
 | `DA_ALLOW_INSECURE_COOKIE` | `false` | Cookie ohne `Secure` (nur Dev/HTTP) |
 | `DA_DEV` | `false` | CORS für den Vite-Dev-Server aktivieren |
 | `DA_IDLE_TIMEOUT` | `0` (aus) | Idle-Shutdown nach Inaktivität (z. B. `90s`), für Socket-Activation |
+| `DA_AUDIT_LOG` | *(leer)* | Pfad für persistentes Audit-Log (z. B. `/var/log/debian-admin/audit.log`) |
+| `DA_TLS_CERT` / `DA_TLS_KEY` | *(leer)* | Aktivieren eingebautes HTTPS, wenn beide gesetzt sind |
 
 ## Tests
 

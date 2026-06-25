@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { Play, Square, RotateCw, Search } from "lucide-vue-next";
+import { Play, Square, RotateCw, Search, ToggleLeft, ToggleRight } from "lucide-vue-next";
 import { api } from "@/lib/api";
 import { useAsyncData } from "@/composables/useAsyncData";
 import { useChannel } from "@/composables/useChannel";
@@ -127,6 +127,26 @@ async function act(s: Service, action: string): Promise<void> {
               @click="act(s, 'restart')"
             >
               <RotateCw class="h-4 w-4" />
+            </Button>
+            <Button
+              v-if="s.unitFileState === 'enabled'"
+              variant="ghost"
+              size="icon"
+              title="Autostart deaktivieren"
+              :disabled="busy === s.name"
+              @click="act(s, 'disable')"
+            >
+              <ToggleRight class="h-4 w-4 text-primary" />
+            </Button>
+            <Button
+              v-else-if="s.unitFileState === 'disabled'"
+              variant="ghost"
+              size="icon"
+              title="Autostart aktivieren"
+              :disabled="busy === s.name"
+              @click="act(s, 'enable')"
+            >
+              <ToggleLeft class="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
         </div>

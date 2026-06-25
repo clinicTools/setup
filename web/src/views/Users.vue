@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { UserPlus, Trash2, KeyRound, Users as UsersIcon, RotateCw } from "lucide-vue-next";
+import { UserPlus, Trash2, KeyRound, Users as UsersIcon, RotateCw, Pencil, FolderPlus } from "lucide-vue-next";
 import { api } from "@/lib/api";
 import { useAsyncData } from "@/composables/useAsyncData";
 import { useToast } from "@/composables/useToast";
@@ -84,6 +84,55 @@ function refreshAll(): void {
   reload();
   reloadGroups();
 }
+
+// Benutzer bearbeiten (Gruppen/Shell)
+const editTarget = ref<SystemUser | null>(null);
+const editForm = ref({ groups: "", shell: "" });
+function openEdit(u: SystemUser): void {
+  editTarget.value = u;
+  editForm.value = { groups: (u.groups || []).join(", "), shell: u.shell };
+}
+async function saveEdit(): Promise<void> {
+  const u = editTarget.value;
+  if (!u) return;
+  const groups = editForm.value.groups.split(/[\s,]+/).filter(Boolean);
+  try {
+    await api.modifyUser(u.username, groups, editForm.value.shell);
+    toast.success(`Benutzer „${u.username}" aktualisiert`);
+    editTarget.value = null;
+    await reload();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+
+// Gruppe anlegen
+const showGroup = ref(false);
+const groupForm = ref({ name: "", system: false });
+async function createGroup(): Promise<void> {
+  try {
+    await api.createGroup(groupForm.value.name, groupForm.value.system);
+    toast.success(`Gruppe „${groupForm.value.name}" angelegt`);
+    showGroup.value = false;
+    groupForm.value = { name: "", system: false };
+    await reloadGroups();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
+const deleteGroupTarget = ref<string | null>(null);
+async function confirmDeleteGroup(): Promise<void> {
+  const name = deleteGroupTarget.value;
+  deleteGroupTarget.value = null;
+  if (!name) return;
+  try {
+    await api.deleteGroup(name);
+    toast.success(`Gruppe „${name}" gelöscht`);
+    await reloadGroups();
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+}
 </script>
 
 <template>
@@ -97,7 +146,10 @@ function refreshAll(): void {
         <Button variant="outline" size="sm" @click="refreshAll">
           <RotateCw class="h-4 w-4" /> Aktualisieren
         </Button>
-        <Button v-if="auth.user?.admin" variant="primary" size="sm" @click="showCreate = true">
+        <Button v-if="auth.user?.admin && tab === 'groups'" variant="primary" size="sm" @click="showGroup = true">
+          <FolderPlus class="h-4 w-4" /> Gruppe
+        </Button>
+        <Button v-if="auth.user?.admin && tab === 'users'" variant="primary" size="sm" @click="showCreate = true">
           <UserPlus class="h-4 w-4" /> Benutzer
         </Button>
       </template>
@@ -143,6 +195,9 @@ function refreshAll(): void {
             </p>
           </div>
           <div v-if="auth.user?.admin && !u.system" class="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="icon" title="Bearbeiten" @click="openEdit(u)">
+              <Pencil class="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" title="Passwort setzen" @click="pwTarget = u">
               <KeyRound class="h-4 w-4" />
             </Button>
@@ -173,6 +228,15 @@ function refreshAll(): void {
               {{ (g.members || []).join(", ") || "keine Mitglieder" }}
             </p>
           </div>
+          <Button
+            v-if="auth.user?.admin && !g.system"
+            variant="ghost"
+            size="icon"
+            title="Gruppe löschen"
+            @click="deleteGroupTarget = g.name"
+          >
+            <Trash2 class="h-4 w-4 text-destructive" />
+          </Button>
         </div>
       </div>
     </DataState>
@@ -236,6 +300,59 @@ function refreshAll(): void {
       </div>
     </Teleport>
 
+    <!-- Benutzer bearbeiten -->
+    <Teleport to="body">
+      <div
+        v-if="editTarget"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        @click.self="editTarget = null"
+      >
+        <form
+          class="w-full max-w-md space-y-4 rounded-xl border border-border bg-popover p-6 shadow-xl"
+          @submit.prevent="saveEdit"
+        >
+          <h3 class="text-lg font-semibold">„{{ editTarget.username }}" bearbeiten</h3>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium">Gruppen (kommagetrennt)</label>
+            <Input v-model="editForm.groups" placeholder="sudo, docker" />
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium">Login-Shell</label>
+            <Input v-model="editForm.shell" />
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <Button variant="outline" type="button" @click="editTarget = null">Abbrechen</Button>
+            <Button variant="primary" type="submit">Speichern</Button>
+          </div>
+        </form>
+      </div>
+    </Teleport>
+
+    <!-- Gruppe anlegen -->
+    <Teleport to="body">
+      <div
+        v-if="showGroup"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        @click.self="showGroup = false"
+      >
+        <form
+          class="w-full max-w-sm space-y-4 rounded-xl border border-border bg-popover p-6 shadow-xl"
+          @submit.prevent="createGroup"
+        >
+          <h3 class="text-lg font-semibold">Neue Gruppe</h3>
+          <Input v-model="groupForm.name" placeholder="Gruppenname" />
+          <label class="flex items-center gap-2 text-sm text-muted-foreground">
+            <input v-model="groupForm.system" type="checkbox" class="h-4 w-4 rounded border-input" />
+            Systemgruppe
+          </label>
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" type="button" @click="showGroup = false">Abbrechen</Button>
+            <Button variant="primary" type="submit" :disabled="!groupForm.name">Anlegen</Button>
+          </div>
+        </form>
+      </div>
+    </Teleport>
+
     <ConfirmDialog
       :open="deleteTarget !== null"
       title="Benutzer löschen?"
@@ -244,6 +361,16 @@ function refreshAll(): void {
       destructive
       @confirm="confirmDelete"
       @cancel="deleteTarget = null"
+    />
+
+    <ConfirmDialog
+      :open="deleteGroupTarget !== null"
+      title="Gruppe löschen?"
+      :message="`Die Gruppe „${deleteGroupTarget}“ wird entfernt.`"
+      confirm-label="Löschen"
+      destructive
+      @confirm="confirmDeleteGroup"
+      @cancel="deleteGroupTarget = null"
     />
   </div>
 </template>

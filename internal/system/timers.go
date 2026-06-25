@@ -2,8 +2,73 @@ package system
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 )
+
+// cronManagedPrefix kennzeichnet von dieser Anwendung verwaltete cron.d-Dateien.
+const cronManagedPrefix = "debian-admin-"
+
+// CreateCronJob legt einen System-Cron-Job als verwaltete Datei unter
+// /etc/cron.d an. name dient als Dateibasis (nur [a-z0-9-]).
+func CreateCronJob(name, schedule, user, command string) error {
+	if !validCronName(name) {
+		return fmt.Errorf("ungültiger Name: %q", name)
+	}
+	if !validCronSchedule(schedule) {
+		return fmt.Errorf("ungültiger Zeitplan: %q", schedule)
+	}
+	if !validUsername(user) {
+		return fmt.Errorf("ungültiger Benutzer: %q", user)
+	}
+	if command == "" || strings.ContainsAny(command, "\n\r") {
+		return fmt.Errorf("ungültiges Kommando")
+	}
+
+	path := "/etc/cron.d/" + cronManagedPrefix + name
+	content := fmt.Sprintf("# Verwaltet von debian-admin\n%s %s %s\n", schedule, user, command)
+	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+// DeleteCronJob entfernt einen zuvor angelegten verwalteten Cron-Job.
+func DeleteCronJob(name string) error {
+	if !validCronName(name) {
+		return fmt.Errorf("ungültiger Name: %q", name)
+	}
+	return os.Remove("/etc/cron.d/" + cronManagedPrefix + name)
+}
+
+func validCronName(name string) bool {
+	if name == "" || len(name) > 64 {
+		return false
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+// validCronSchedule prüft ein 5-Feld-Cron-Muster mit erlaubten Zeichen.
+func validCronSchedule(s string) bool {
+	fields := strings.Fields(s)
+	if len(fields) != 5 {
+		return false
+	}
+	for _, f := range fields {
+		for _, r := range f {
+			switch {
+			case r >= '0' && r <= '9':
+			case r == '*' || r == '/' || r == ',' || r == '-':
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
 
 // Timer beschreibt einen systemd-Timer (moderne Cron-Alternative).
 type Timer struct {

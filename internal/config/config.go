@@ -33,6 +33,11 @@ type Config struct {
 	// vorliegt (0 = deaktiviert). In Kombination mit systemd-Socket-Activation
 	// ergibt sich das Cockpit-Verhalten „läuft nur bei Verbindung".
 	IdleTimeout time.Duration
+	// AuditLogPath ist die Datei für das persistente Audit-Log (leer = nur RAM).
+	AuditLogPath string
+	// TLSCert/TLSKey aktivieren eingebautes HTTPS, wenn beide gesetzt sind.
+	TLSCert string
+	TLSKey  string
 }
 
 // Load liest die Konfiguration aus der Umgebung.
@@ -45,6 +50,9 @@ func Load() *Config {
 		AllowInsecureCookie: envBool("DA_ALLOW_INSECURE_COOKIE", false),
 		Dev:                 envBool("DA_DEV", false),
 		IdleTimeout:         envDuration("DA_IDLE_TIMEOUT", 0),
+		AuditLogPath:        env("DA_AUDIT_LOG", ""),
+		TLSCert:             env("DA_TLS_CERT", ""),
+		TLSKey:              env("DA_TLS_KEY", ""),
 	}
 
 	if secret := os.Getenv("DA_SESSION_SECRET"); secret != "" {

@@ -213,6 +213,169 @@ func (a *API) Power(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// --- Firewall-Regeln ---
+
+type firewallRuleRequest struct {
+	Action   string `json:"action"`
+	Port     string `json:"port"`
+	Protocol string `json:"protocol"`
+}
+
+func (a *API) FirewallAddRule(w http.ResponseWriter, r *http.Request) {
+	var req firewallRuleRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.FirewallAddRule(req.Action, req.Port, req.Protocol); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (a *API) FirewallDeleteRule(w http.ResponseWriter, r *http.Request) {
+	var req firewallRuleRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.FirewallDeleteRule(req.Action, req.Port, req.Protocol); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// --- Gruppen & Benutzerbearbeitung ---
+
+type groupRequest struct {
+	Name   string `json:"name"`
+	System bool   `json:"system"`
+}
+
+func (a *API) CreateGroup(w http.ResponseWriter, r *http.Request) {
+	var req groupRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.CreateGroup(req.Name, req.System); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
+}
+
+func (a *API) DeleteGroup(w http.ResponseWriter, r *http.Request) {
+	if err := system.DeleteGroup(chi.URLParam(r, "name")); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+type modifyUserRequest struct {
+	Groups []string `json:"groups"`
+	Shell  string   `json:"shell"`
+}
+
+func (a *API) ModifyUser(w http.ResponseWriter, r *http.Request) {
+	var req modifyUserRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.ModifyUser(chi.URLParam(r, "name"), req.Groups, req.Shell); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// --- Prozesse ---
+
+type killRequest struct {
+	Signal string `json:"signal"`
+}
+
+func (a *API) KillProcess(w http.ResponseWriter, r *http.Request) {
+	pid := atoiDefault(chi.URLParam(r, "pid"), 0)
+	var req killRequest
+	_ = decode(r, &req)
+	if err := system.KillProcess(pid, req.Signal); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// --- Cron ---
+
+type cronRequest struct {
+	Name     string `json:"name"`
+	Schedule string `json:"schedule"`
+	User     string `json:"user"`
+	Command  string `json:"command"`
+}
+
+func (a *API) CreateCron(w http.ResponseWriter, r *http.Request) {
+	var req cronRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.CreateCronJob(req.Name, req.Schedule, req.User, req.Command); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
+}
+
+func (a *API) DeleteCron(w http.ResponseWriter, r *http.Request) {
+	if err := system.DeleteCronJob(chi.URLParam(r, "name")); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// --- Netzwerk ---
+
+type hostnameRequest struct {
+	Hostname string `json:"hostname"`
+}
+
+func (a *API) SetHostname(w http.ResponseWriter, r *http.Request) {
+	var req hostnameRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.SetHostname(req.Hostname); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+type ifaceStateRequest struct {
+	Up bool `json:"up"`
+}
+
+func (a *API) SetInterfaceState(w http.ResponseWriter, r *http.Request) {
+	var req ifaceStateRequest
+	if err := decode(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
+		return
+	}
+	if err := system.SetInterfaceState(chi.URLParam(r, "iface"), req.Up); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func atoiDefault(s string, def int) int {
 	if s == "" {
 		return def

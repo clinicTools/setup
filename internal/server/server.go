@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/clinictools/setup/internal/api"
+	"github.com/clinictools/setup/internal/audit"
 	"github.com/clinictools/setup/internal/auth"
 	"github.com/clinictools/setup/internal/config"
+	"github.com/clinictools/setup/internal/jobs"
 	"github.com/clinictools/setup/internal/web"
 	"github.com/clinictools/setup/internal/ws"
 	"github.com/go-chi/chi/v5"
@@ -21,10 +23,12 @@ import (
 func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 	authn := auth.NewAuthenticator(cfg.PAMService, cfg.AdminGroups)
 	sessions := auth.NewSessionManager(cfg.SessionSecret, cfg.SessionTTL, !cfg.AllowInsecureCookie)
-	a := api.New(authn, sessions)
+	jobMgr := jobs.NewManager()
+	auditLog := audit.New(cfg.AuditLogPath)
+	a := api.New(authn, sessions, jobMgr, auditLog)
 
 	activity := ws.NewActivity()
-	wsHandler := ws.NewHandler(ws.DefaultRegistry(), activity, cfg.Dev)
+	wsHandler := ws.NewHandler(ws.NewRegistry(jobMgr), activity, cfg.Dev)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -62,35 +66,73 @@ func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 
 				// Lesende System-Endpunkte.
 				r.Get("/system/info", a.Info)
-			r.Get("/system/users", a.Users)
-			r.Get("/system/groups", a.Groups)
-			r.Get("/system/services", a.Services)
-			r.Get("/system/services/{name}/status", a.ServiceStatus)
-			r.Get("/system/packages", a.Packages)
-			r.Get("/system/packages/installed", a.InstalledPackages)
-			r.Get("/system/network", a.Network)
-			r.Get("/system/storage", a.Storage)
-			r.Get("/system/firewall", a.Firewall)
-			r.Get("/system/logs", a.Logs)
-			r.Get("/system/scheduled", a.Scheduled)
-			r.Get("/system/time", a.Time)
-			r.Get("/system/timezones", a.Timezones)
-			r.Get("/system/processes", a.Processes)
+				r.Get("/system/users", a.Users)
+				r.Get("/system/groups", a.Groups)
+				r.Get("/system/services", a.Services)
+				r.Get("/system/services/{name}/status", a.ServiceStatus)
+				r.Get("/system/packages", a.Packages)
+				r.Get("/system/packages/installed", a.InstalledPackages)
+				r.Get("/system/network", a.Network)
+				r.Get("/system/storage", a.Storage)
+				r.Get("/system/firewall", a.Firewall)
+				r.Get("/system/logs", a.Logs)
+				r.Get("/system/scheduled", a.Scheduled)
+				r.Get("/system/time", a.Time)
+				r.Get("/system/timezones", a.Timezones)
+				r.Get("/system/processes", a.Processes)
+				r.Get("/system/audit", a.AuditList)
+				r.Get("/system/jobs", a.JobsList)
+				r.Get("/system/jobs/{id}", a.JobGet)
+				r.Get("/system/k3s/status", a.K3sStatus)
+				r.Get("/system/k3s/nodes", a.K3sNodes)
+				r.Get("/system/k3s/pods", a.K3sPods)
+				r.Get("/system/k3s/kubeconfig", a.K3sKubeconfig)
+				r.Get("/system/k3s/token", a.K3sToken)
 
-			// Schreibende Endpunkte (zusätzlich Admin-Gruppe erforderlich).
-			r.Group(func(r chi.Router) {
-				r.Use(auth.RequireAdmin)
-				r.Post("/system/services/{name}/action", a.ServiceAction)
-				r.Post("/system/users", a.CreateUser)
-				r.Delete("/system/users/{name}", a.DeleteUser)
-				r.Put("/system/users/{name}/password", a.SetPassword)
-				r.Put("/system/firewall", a.FirewallSet)
-				r.Put("/system/time/timezone", a.SetTimezone)
-				r.Put("/system/time/ntp", a.SetNTP)
-				r.Post("/system/packages/update", a.AptUpdate)
-				r.Post("/system/power", a.Power)
+				// Schreibende Endpunkte: Admin-Gruppe + CSRF + Audit.
+				r.Group(func(r chi.Router) {
+					r.Use(auth.RequireAdmin)
+					r.Use(auth.CSRFMiddleware)
+					r.Use(a.AuditMiddleware)
+
+					// Dienste
+					r.Post("/system/services/{name}/action", a.ServiceAction)
+					// Benutzer & Gruppen
+					r.Post("/system/users", a.CreateUser)
+					r.Delete("/system/users/{name}", a.DeleteUser)
+					r.Put("/system/users/{name}/password", a.SetPassword)
+					r.Put("/system/users/{name}", a.ModifyUser)
+					r.Post("/system/groups", a.CreateGroup)
+					r.Delete("/system/groups/{name}", a.DeleteGroup)
+					// Firewall
+					r.Put("/system/firewall", a.FirewallSet)
+					r.Post("/system/firewall/rules", a.FirewallAddRule)
+					r.Delete("/system/firewall/rules", a.FirewallDeleteRule)
+					// Zeit
+					r.Put("/system/time/timezone", a.SetTimezone)
+					r.Put("/system/time/ntp", a.SetNTP)
+					// Pakete (langlaufend → Jobs)
+					r.Post("/system/packages/update", a.AptUpdate)
+					r.Post("/system/packages/install", a.PackageInstall)
+					r.Post("/system/packages/remove", a.PackageRemove)
+					r.Post("/system/packages/upgrade", a.PackageUpgrade)
+					// Prozesse
+					r.Post("/system/processes/{pid}/kill", a.KillProcess)
+					// Cron
+					r.Post("/system/cron", a.CreateCron)
+					r.Delete("/system/cron/{name}", a.DeleteCron)
+					// Netzwerk
+					r.Put("/system/network/hostname", a.SetHostname)
+					r.Put("/system/network/interfaces/{iface}", a.SetInterfaceState)
+					// Jobs
+					r.Post("/system/jobs/{id}/cancel", a.JobCancel)
+					// k3s
+					r.Post("/system/k3s/install", a.K3sInstall)
+					r.Post("/system/k3s/uninstall", a.K3sUninstall)
+					// Energie
+					r.Post("/system/power", a.Power)
+				})
 			})
-			}) // Ende REST-Timeout-Gruppe
 		})
 	})
 
@@ -130,7 +172,7 @@ func devCORS(next http.Handler) http.Handler {
 		h.Set("Access-Control-Allow-Origin", "http://localhost:5173")
 		h.Set("Access-Control-Allow-Credentials", "true")
 		h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		h.Set("Access-Control-Allow-Headers", "Content-Type")
+		h.Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
+	"github.com/clinictools/setup/internal/audit"
 	"github.com/clinictools/setup/internal/auth"
+	"github.com/clinictools/setup/internal/jobs"
 	"github.com/clinictools/setup/internal/system"
 )
 
@@ -15,11 +18,21 @@ import (
 type API struct {
 	Auth     *auth.Authenticator
 	Sessions *auth.SessionManager
+	Jobs     *jobs.Manager
+	Audit    *audit.Logger
+	Limiter  *auth.RateLimiter
 }
 
-// New erzeugt eine API-Instanz.
-func New(a *auth.Authenticator, s *auth.SessionManager) *API {
-	return &API{Auth: a, Sessions: s}
+// New erzeugt eine API-Instanz. Der Login-Limiter erlaubt 5 Fehlversuche je
+// 5 Minuten und sperrt danach 15 Minuten.
+func New(a *auth.Authenticator, s *auth.SessionManager, jm *jobs.Manager, al *audit.Logger) *API {
+	return &API{
+		Auth:     a,
+		Sessions: s,
+		Jobs:     jm,
+		Audit:    al,
+		Limiter:  auth.NewRateLimiter(5, 5*time.Minute, 15*time.Minute),
+	}
 }
 
 // writeJSON serialisiert v als JSON mit dem angegebenen Statuscode.

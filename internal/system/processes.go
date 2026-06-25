@@ -1,12 +1,36 @@
 package system
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 )
+
+// KillProcess sendet ein Signal an einen Prozess. signal ∈ {TERM, KILL, HUP,
+// INT}. PIDs ≤ 1 sind nicht erlaubt (Schutz von init/Kernel-Threads).
+func KillProcess(pid int, signal string) error {
+	if pid <= 1 {
+		return fmt.Errorf("ungültige PID: %d", pid)
+	}
+	var sig syscall.Signal
+	switch signal {
+	case "", "TERM":
+		sig = syscall.SIGTERM
+	case "KILL":
+		sig = syscall.SIGKILL
+	case "HUP":
+		sig = syscall.SIGHUP
+	case "INT":
+		sig = syscall.SIGINT
+	default:
+		return fmt.Errorf("unzulässiges Signal: %q", signal)
+	}
+	return syscall.Kill(pid, sig)
+}
 
 // Process beschreibt einen laufenden Prozess (aus /proc/<pid>).
 type Process struct {

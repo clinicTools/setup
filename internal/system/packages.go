@@ -112,3 +112,21 @@ func AptUpdate() (string, error) {
 func AptUpgradeCount() int {
 	return len(upgradablePackages())
 }
+
+// ValidPackageName erzwingt das Debian-Paketnamensschema (inkl. optionaler
+// Architektur-Qualifizierung wie „name:amd64") und schließt damit Injection
+// über apt-Argumente aus.
+func ValidPackageName(name string) bool {
+	if name == "" || len(name) > 100 || strings.HasPrefix(name, "-") {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '+' || r == '-' || r == '.' || r == ':' || r == '~':
+		default:
+			return false
+		}
+	}
+	return true
+}

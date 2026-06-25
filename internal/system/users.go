@@ -186,6 +186,59 @@ func setPassword(username, password string) error {
 	return cmd.Run()
 }
 
+// ModifyUser ändert Gruppenmitgliedschaft und/oder Login-Shell eines Benutzers.
+func ModifyUser(username string, groups []string, shell string) error {
+	if !validUsername(username) {
+		return fmt.Errorf("ungültiger Benutzername: %q", username)
+	}
+	if groups != nil {
+		// -G ersetzt die Zusatzgruppen vollständig.
+		if _, err := run("usermod", "-G", strings.Join(sanitizeNames(groups), ","), username); err != nil {
+			return err
+		}
+	}
+	if shell != "" {
+		if !validShell(shell) {
+			return fmt.Errorf("ungültige Shell: %q", shell)
+		}
+		if _, err := run("usermod", "-s", shell, username); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CreateGroup legt eine Gruppe an (system = Systemgruppe via -r).
+func CreateGroup(name string, systemGroup bool) error {
+	if !validUsername(name) {
+		return fmt.Errorf("ungültiger Gruppenname: %q", name)
+	}
+	args := []string{}
+	if systemGroup {
+		args = append(args, "-r")
+	}
+	args = append(args, name)
+	_, err := run("groupadd", args...)
+	return err
+}
+
+// DeleteGroup entfernt eine Gruppe.
+func DeleteGroup(name string) error {
+	if !validUsername(name) {
+		return fmt.Errorf("ungültiger Gruppenname: %q", name)
+	}
+	_, err := run("groupdel", name)
+	return err
+}
+
+// validShell erlaubt nur absolute Pfade ohne Sonderzeichen.
+func validShell(shell string) bool {
+	if !strings.HasPrefix(shell, "/") || strings.ContainsAny(shell, " \t;|&$`\n") {
+		return false
+	}
+	return true
+}
+
 // validUsername erzwingt konservative Unix-Namensregeln, um Command-Injection
 // über useradd-Argumente auszuschließen.
 func validUsername(name string) bool {

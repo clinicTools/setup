@@ -43,10 +43,17 @@ func main() {
 		log.Fatalf("Listen fehlgeschlagen: %v", err)
 	}
 
+	tlsEnabled := cfg.TLSCert != "" && cfg.TLSKey != ""
 	go func() {
-		log.Printf("debian-admin lauscht auf %s (Socket-Activation=%v, Idle-Timeout=%s, PAM=%q)",
-			listener.Addr(), viaSocket, cfg.IdleTimeout, cfg.PAMService)
-		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("debian-admin lauscht auf %s (TLS=%v, Socket-Activation=%v, Idle-Timeout=%s, PAM=%q)",
+			listener.Addr(), tlsEnabled, viaSocket, cfg.IdleTimeout, cfg.PAMService)
+		var err error
+		if tlsEnabled {
+			err = srv.ServeTLS(listener, cfg.TLSCert, cfg.TLSKey)
+		} else {
+			err = srv.Serve(listener)
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("Server-Fehler: %v", err)
 			os.Exit(1)
 		}

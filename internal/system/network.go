@@ -1,10 +1,69 @@
 package system
 
 import (
+	"fmt"
 	"net"
 	"sort"
 	"strings"
 )
+
+// SetHostname setzt den Systemhostnamen via hostnamectl.
+func SetHostname(name string) error {
+	if !validHostname(name) {
+		return fmt.Errorf("ungültiger Hostname: %q", name)
+	}
+	if !commandExists("hostnamectl") {
+		return errMissingTool("hostnamectl")
+	}
+	_, err := run("hostnamectl", "set-hostname", name)
+	return err
+}
+
+// SetInterfaceState schaltet eine Netzwerkschnittstelle up oder down.
+func SetInterfaceState(iface string, up bool) error {
+	if !validIfaceName(iface) {
+		return fmt.Errorf("ungültige Schnittstelle: %q", iface)
+	}
+	if !commandExists("ip") {
+		return errMissingTool("ip")
+	}
+	state := "down"
+	if up {
+		state = "up"
+	}
+	_, err := run("ip", "link", "set", iface, state)
+	return err
+}
+
+func validHostname(h string) bool {
+	if h == "" || len(h) > 253 || strings.HasPrefix(h, "-") {
+		return false
+	}
+	for _, r := range h {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '-' || r == '.':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func validIfaceName(name string) bool {
+	if name == "" || len(name) > 15 || strings.HasPrefix(name, "-") {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '-' || r == '_' || r == '.' || r == '@':
+		default:
+			return false
+		}
+	}
+	return true
+}
 
 // NetworkInterface beschreibt eine Netzwerkschnittstelle inkl. Adressen.
 type NetworkInterface struct {

@@ -72,18 +72,19 @@ const initials = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-full overflow-hidden bg-background">
-    <!-- Navigationsleiste -->
+  <div class="flex h-full overflow-hidden">
+    <!-- Navigationsleiste (Acrylic über dem Mica-Hintergrund) -->
     <aside
       :class="
         cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar transition-transform md:static md:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border/60 bg-sidebar backdrop-blur-2xl transition-transform md:static md:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )
       "
     >
-      <div class="flex h-14 items-center gap-2 px-4">
-        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+      <!-- Marke -->
+      <div class="flex h-14 items-center gap-2.5 px-4">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
           <Server class="h-[18px] w-[18px]" />
         </div>
         <div class="leading-tight">
@@ -92,50 +93,10 @@ const initials = computed(() => {
         </div>
       </div>
 
+      <!-- Konto-Karte (Windows-11-Muster: Konto oben in der Navigation) -->
       <div class="px-3 pb-2">
-        <div class="relative">
-          <Search class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            v-model="search"
-            type="search"
-            :placeholder="t('shell.searchSetting')"
-            class="h-9 w-full rounded-md border border-input bg-card pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-      </div>
-
-      <nav class="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-3 py-2">
-        <div v-for="[group, items] in filtered" :key="group">
-          <div class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {{ t(`nav.groups.${group}`) }}
-          </div>
-          <RouterLink
-            v-for="item in items"
-            :key="item.to"
-            :to="item.to"
-            class="group relative flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors"
-            :class="
-              route.path === item.to
-                ? 'bg-sidebar-accent font-medium text-foreground'
-                : 'text-foreground/70 hover:bg-accent/60 hover:text-foreground'
-            "
-            @click="sidebarOpen = false"
-          >
-            <!-- Akzent-Pille des aktiven Eintrags (Windows-11-Muster) -->
-            <span
-              v-if="route.path === item.to"
-              class="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary"
-            />
-            <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" />
-            <span class="truncate">{{ t(`nav.items.${item.labelKey}`) }}</span>
-          </RouterLink>
-        </div>
-      </nav>
-
-      <!-- Benutzer + Power -->
-      <div class="border-t border-border p-3">
-        <div class="flex items-center gap-2">
-          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+        <div class="flex items-center gap-3 rounded-xl border border-border/70 bg-card/70 px-3 py-2.5 shadow-sm">
+          <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-xs font-semibold text-primary-foreground">
             {{ initials }}
           </div>
           <div class="min-w-0 flex-1 leading-tight">
@@ -144,11 +105,56 @@ const initials = computed(() => {
               {{ auth.user?.admin ? t("shell.administrator") : t("shell.user") }}
             </div>
           </div>
-          <Button variant="ghost" size="icon" :title="t('shell.logout')" @click="doLogout">
+          <Button variant="ghost" size="icon" class="h-8 w-8" :title="t('shell.logout')" @click="doLogout">
             <LogOut class="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      <!-- Suche -->
+      <div class="px-3 pb-2">
+        <div class="relative">
+          <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            v-model="search"
+            type="search"
+            :placeholder="t('shell.searchSetting')"
+            class="h-9 w-full rounded-lg border border-input bg-card/80 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+      </div>
+
+      <nav class="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-2 py-2">
+        <div v-for="[group, items] in filtered" :key="group">
+          <div class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            {{ t(`nav.groups.${group}`) }}
+          </div>
+          <RouterLink
+            v-for="item in items"
+            :key="item.to"
+            :to="item.to"
+            class="group relative flex items-center gap-3 rounded-lg px-3 py-[7px] text-[13px] transition-colors"
+            :class="
+              route.path === item.to
+                ? 'bg-sidebar-accent font-semibold text-foreground shadow-sm'
+                : 'text-foreground/75 hover:bg-accent/50 hover:text-foreground'
+            "
+            @click="sidebarOpen = false"
+          >
+            <!-- Akzent-Balken des aktiven Eintrags (Windows-11-Muster) -->
+            <span
+              v-if="route.path === item.to"
+              class="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
+            />
+            <component
+              :is="item.icon"
+              class="h-[18px] w-[18px] shrink-0"
+              :class="route.path === item.to ? 'text-primary' : 'text-foreground/60'"
+            />
+            <span class="truncate">{{ t(`nav.items.${item.labelKey}`) }}</span>
+          </RouterLink>
+        </div>
+      </nav>
     </aside>
 
     <!-- Backdrop für mobile Navigation -->
@@ -160,11 +166,10 @@ const initials = computed(() => {
 
     <!-- Inhalt -->
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-background/80 px-4 backdrop-blur">
-        <Button variant="ghost" size="icon" class="md:hidden" @click="sidebarOpen = true">
+      <header class="flex h-12 shrink-0 items-center justify-end gap-1 px-4">
+        <Button variant="ghost" size="icon" class="mr-auto md:hidden" @click="sidebarOpen = true">
           <Menu class="h-5 w-5" />
         </Button>
-        <div class="flex-1" />
         <ConnectionStatus />
         <LanguageSwitcher />
         <Button variant="ghost" size="icon" :title="theme === 'dark' ? t('shell.lightTheme') : t('shell.darkTheme')" @click="toggle">
@@ -183,7 +188,7 @@ const initials = computed(() => {
       </header>
 
       <main class="scrollbar-thin flex-1 overflow-y-auto">
-        <div class="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
+        <div class="mx-auto max-w-[1080px] px-5 pb-10 pt-2 md:px-10">
           <RouterView />
         </div>
       </main>

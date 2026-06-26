@@ -5,6 +5,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -82,10 +83,10 @@ func handle(w http.ResponseWriter, fn func() (any, error)) {
 	writeJSON(w, http.StatusOK, data)
 }
 
-// decode liest einen JSON-Request-Body in v.
+// decode liest einen JSON-Request-Body in v (begrenzt auf 1 MiB gegen DoS).
 func decode(r *http.Request, v any) error {
 	defer func() { _ = r.Body.Close() }()
-	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 1<<20))
+	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 	dec.DisallowUnknownFields()
 	return dec.Decode(v)
 }

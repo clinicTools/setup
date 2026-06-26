@@ -38,6 +38,10 @@ type Config struct {
 	// TLSCert/TLSKey aktivieren eingebautes HTTPS, wenn beide gesetzt sind.
 	TLSCert string
 	TLSKey  string
+	// TrustProxy erlaubt das Vertrauen auf X-Forwarded-For/X-Real-IP. NUR
+	// aktivieren, wenn ein vertrauenswürdiger Reverse-Proxy davor steht — sonst
+	// kann die Quell-IP (Rate-Limit-Schlüssel, Audit-Log) gefälscht werden.
+	TrustProxy bool
 }
 
 // Load liest die Konfiguration aus der Umgebung.
@@ -53,6 +57,7 @@ func Load() *Config {
 		AuditLogPath:        env("DA_AUDIT_LOG", ""),
 		TLSCert:             env("DA_TLS_CERT", ""),
 		TLSKey:              env("DA_TLS_KEY", ""),
+		TrustProxy:          envBool("DA_TRUST_PROXY", false),
 	}
 
 	if secret := os.Getenv("DA_SESSION_SECRET"); secret != "" {

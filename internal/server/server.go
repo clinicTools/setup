@@ -34,7 +34,11 @@ func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	// X-Forwarded-For/X-Real-IP nur hinter vertrauenswürdigem Proxy auswerten,
+	// sonst ist die Quell-IP fälschbar (Rate-Limit-Umgehung, Audit-Manipulation).
+	if cfg.TrustProxy {
+		r.Use(middleware.RealIP)
+	}
 	r.Use(middleware.Recoverer)
 	r.Use(securityHeaders)
 	// Jede HTTP-Aktivität verlängert das Idle-Fenster.

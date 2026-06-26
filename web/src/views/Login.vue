@@ -26,8 +26,10 @@ async function submit(): Promise<void> {
   loading.value = true;
   try {
     await auth.login(username.value, password.value);
-    const redirect = (route.query.redirect as string) || "/";
-    router.push(redirect);
+    // Open-Redirect verhindern: nur interne, relative Pfade zulassen.
+    const target = (route.query.redirect as string) || "/";
+    const safe = target.startsWith("/") && !target.startsWith("//") ? target : "/";
+    router.push(safe);
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : t("login.failed");
   } finally {

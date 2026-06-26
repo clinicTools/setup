@@ -94,6 +94,20 @@ func TestValidHostname(t *testing.T) {
 	}
 }
 
+func TestValidNoControl(t *testing.T) {
+	for _, s := range []string{"Sicher!2024", "mit spaces", "üml@ut:ok", ""} {
+		if !validNoControl(s) {
+			t.Errorf("validNoControl(%q) = false, erwartet true", s)
+		}
+	}
+	// Zeilenumbruch/Steuerzeichen müssen abgelehnt werden (chpasswd-Injection).
+	for _, s := range []string{"pw\nroot:pwned", "a\rb", "tab\tval", "null\x00"} {
+		if validNoControl(s) {
+			t.Errorf("validNoControl(%q) = true, erwartet false", s)
+		}
+	}
+}
+
 func TestIsSafeToken(t *testing.T) {
 	if !isSafeToken("err") || !isSafeToken("warning4") {
 		t.Error("erwartete sichere Tokens wurden abgelehnt")

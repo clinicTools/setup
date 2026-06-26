@@ -181,9 +181,25 @@ func SetPassword(r *Runner, username, password string) error {
 }
 
 func setPassword(r *Runner, username, password string) error {
+	// Steuerzeichen (insb. Zeilenumbrüche) verbieten: chpasswd liest mehrere
+	// „user:passwort"-Zeilen — ein eingeschmuggeltes \n könnte sonst weitere
+	// Konten (z. B. root) verändern.
+	if !validNoControl(password) {
+		return fmt.Errorf("Passwort enthält unzulässige Steuerzeichen")
+	}
 	// chpasswd liest „user:passwort" von stdin (hinter der sudo-Passwortzeile).
 	_, err := r.sudoStdin(username+":"+password+"\n", "chpasswd")
 	return err
+}
+
+// validNoControl lehnt Strings mit Steuerzeichen (< 0x20 oder DEL) ab.
+func validNoControl(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // ModifyUser ändert Gruppenmitgliedschaft und/oder Login-Shell eines Benutzers.

@@ -145,6 +145,23 @@ setup/
 3. Gruppen werden aus dem System aufgelöst; Mitglieder einer Admin-Gruppe
    erhalten das `admin`-Flag.
 
+## Installation (eine Zeile)
+
+Auf einem Debian-/Ubuntu-Server mit systemd:
+
+```bash
+curl -sfL https://raw.githubusercontent.com/clinicTools/setup/main/install.sh | sudo bash
+```
+
+Der Installer lädt das passende vorgefertigte Binary der neuesten Release, prüft
+die **SHA256-Summe**, richtet **systemd-Socket-Aktivierung** + PAM-Stack ein,
+erzeugt ein **persistentes Session-Secret** und startet den Dienst (Port 8088).
+Anschließend Anmeldung mit einem System-Benutzerkonto. Konfiguration in
+`/etc/debian-admin.env`.
+
+> Den Zugang anschließend per VPN/Reverse-Proxy + TLS absichern — nicht
+> ungeschützt ins Internet stellen.
+
 ## Schnellstart (Entwicklung)
 
 Voraussetzungen: Go ≥ 1.24 (mit CGO/`libpam0g-dev`), Node ≥ 20, ein Linux-Host.
@@ -196,6 +213,7 @@ Reverse-Proxy (nginx/caddy) sollte **TLS** terminieren.
 | `DA_IDLE_TIMEOUT` | `0` (aus) | Idle-Shutdown nach Inaktivität (z. B. `90s`), für Socket-Activation |
 | `DA_AUDIT_LOG` | *(leer)* | Pfad für persistentes Audit-Log (z. B. `/var/log/debian-admin/audit.log`) |
 | `DA_TLS_CERT` / `DA_TLS_KEY` | *(leer)* | Aktivieren eingebautes HTTPS, wenn beide gesetzt sind |
+| `DA_TRUST_PROXY` | `false` | `X-Forwarded-For`/`X-Real-IP` auswerten — NUR hinter vertrauenswürdigem Proxy |
 
 ## Tests
 

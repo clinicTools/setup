@@ -62,38 +62,30 @@ async function kill(p: Process, signal: string): Promise<void> {
     </div>
 
     <DataState :loading="loading" :error="error" :empty="filtered.length === 0">
-      <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <table class="w-full text-sm">
-          <thead class="border-b border-border bg-secondary/40 text-left text-xs text-muted-foreground">
-            <tr>
-              <th class="px-4 py-2 font-medium">PID</th>
-              <th class="px-4 py-2 font-medium">Benutzer</th>
-              <th class="px-4 py-2 font-medium">Kommando</th>
-              <th class="px-4 py-2 text-right font-medium">Speicher</th>
-              <th class="px-4 py-2 text-right font-medium">Threads</th>
-              <th v-if="auth.user?.admin" class="px-4 py-2 text-right font-medium">Aktion</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in filtered" :key="p.pid" class="border-b border-border/50 last:border-0 hover:bg-accent/40">
-              <td class="px-4 py-2 font-mono text-xs">{{ p.pid }}</td>
-              <td class="px-4 py-2">{{ p.user || "—" }}</td>
-              <td class="max-w-md truncate px-4 py-2 font-mono text-xs">{{ p.command }}</td>
-              <td class="px-4 py-2 text-right tabular-nums">{{ p.rssMB.toFixed(1) }} MB</td>
-              <td class="px-4 py-2 text-right tabular-nums text-muted-foreground">{{ p.threads }}</td>
-              <td v-if="auth.user?.admin" class="px-4 py-2 text-right">
-                <div class="flex justify-end gap-1">
-                  <Button variant="ghost" size="icon" title="Beenden (SIGTERM)" @click="kill(p, 'TERM')">
-                    <X class="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" title="Erzwingen (SIGKILL)" @click="kill(p, 'KILL')">
-                    <Skull class="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Segmentierte Karte (Windows-11-Liste) -->
+      <div class="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
+        <div
+          v-for="p in filtered"
+          :key="p.pid"
+          class="flex items-center gap-3 border-b border-border/50 px-4 py-2.5 last:border-0 hover:bg-accent/30"
+        >
+          <span class="w-14 shrink-0 font-mono text-xs text-muted-foreground">{{ p.pid }}</span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate font-mono text-xs text-foreground">{{ p.command }}</div>
+            <div class="text-[11px] text-muted-foreground">
+              {{ p.user || "—" }} · {{ p.threads }} Threads
+            </div>
+          </div>
+          <span class="shrink-0 tabular-nums text-sm font-medium">{{ p.rssMB.toFixed(1) }} MB</span>
+          <div v-if="auth.user?.admin" class="flex shrink-0 gap-1">
+            <Button variant="ghost" size="icon" title="Beenden (SIGTERM)" @click="kill(p, 'TERM')">
+              <X class="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Erzwingen (SIGKILL)" @click="kill(p, 'KILL')">
+              <Skull class="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </div>
       </div>
     </DataState>
   </div>

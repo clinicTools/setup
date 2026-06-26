@@ -9,6 +9,7 @@ import type { FirewallRule } from "@/lib/types";
 import PageHeader from "@/components/PageHeader.vue";
 import DataState from "@/components/DataState.vue";
 import SettingsCard from "@/components/SettingsCard.vue";
+import Expander from "@/components/Expander.vue";
 import Switch from "@/components/ui/Switch.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Button from "@/components/ui/Button.vue";
@@ -103,10 +104,14 @@ function ruleVariant(action: string): "success" | "destructive" | "warning" | "n
             </template>
           </SettingsCard>
 
-          <!-- Regel hinzufügen -->
-          <div v-if="auth.user?.admin" class="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <label class="text-sm font-medium">Regel hinzufügen</label>
-            <div class="mt-2 flex flex-wrap items-center gap-2">
+          <!-- Regel hinzufügen (aufklappbar, Windows-11-Expander) -->
+          <Expander
+            v-if="auth.user?.admin"
+            :icon="Plus"
+            title="Regel hinzufügen"
+            description="Port für ein- oder ausgehenden Verkehr freigeben oder sperren"
+          >
+            <div class="flex flex-wrap items-center gap-2">
               <select
                 v-model="newRule.action"
                 class="h-9 rounded-md border border-input bg-card px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -129,7 +134,7 @@ function ruleVariant(action: string): "success" | "destructive" | "warning" | "n
                 <Plus class="h-4 w-4" /> Hinzufügen
               </Button>
             </div>
-          </div>
+          </Expander>
 
           <section v-if="data.rules?.length" class="space-y-3">
             <h2 class="px-1 text-sm font-semibold">Regeln</h2>

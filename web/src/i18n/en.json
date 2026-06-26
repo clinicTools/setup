@@ -2,15 +2,10 @@
   "nav": {
     "groups": {
       "system": "System",
-      "accounts": "Accounts",
-      "connections": "Connections",
-      "devices": "Devices",
-      "apps": "Apps",
-      "container": "Container",
-      "security": "Security",
-      "tasks": "Tasks",
-      "time": "Time & Language",
-      "diagnostics": "Diagnostics"
+      "networkDevices": "Network & Devices",
+      "appsContainers": "Apps & Containers",
+      "accountsSecurity": "Accounts & Security",
+      "tasksDiagnostics": "Tasks & Diagnostics"
     },
     "items": {
       "dashboard": "Overview",

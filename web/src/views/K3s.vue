@@ -18,11 +18,13 @@ import { useAuthStore } from "@/stores/auth";
 import PageHeader from "@/components/PageHeader.vue";
 import DataState from "@/components/DataState.vue";
 import SettingsCard from "@/components/SettingsCard.vue";
+import Expander from "@/components/Expander.vue";
 import Button from "@/components/ui/Button.vue";
 import Badge from "@/components/ui/Badge.vue";
 import Switch from "@/components/ui/Switch.vue";
 import JobConsole from "@/components/JobConsole.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import { Settings2 } from "lucide-vue-next";
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -147,12 +149,16 @@ async function copy(text: string): Promise<void> {
             Richtet einen Single-Node-Cluster über den offiziellen Installer ein
             (<code class="font-mono text-xs">get.k3s.io</code>).
           </p>
-          <div class="mt-4 flex items-center justify-between rounded-lg border border-border px-4 py-2.5">
-            <div>
-              <div class="text-sm font-medium">Traefik-Ingress deaktivieren</div>
-              <div class="text-xs text-muted-foreground">Empfohlen, wenn ein eigener Ingress genutzt wird.</div>
-            </div>
-            <Switch v-model="disableTraefik" />
+          <div class="mt-4">
+            <Expander :icon="Settings2" title="Erweiterte Optionen" description="Standardkomponenten anpassen">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-medium">Traefik-Ingress deaktivieren</div>
+                  <div class="text-xs text-muted-foreground">Empfohlen, wenn ein eigener Ingress genutzt wird.</div>
+                </div>
+                <Switch v-model="disableTraefik" />
+              </div>
+            </Expander>
           </div>
           <Button variant="primary" class="mt-4" :disabled="jobId !== null" @click="install">
             <Download class="h-4 w-4" /> Installation starten

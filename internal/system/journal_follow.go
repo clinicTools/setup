@@ -4,16 +4,16 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"os/exec"
 	"strconv"
 	"strings"
 )
 
 // FollowJournal streamt neue Journal-Einträge via `journalctl -f` und ruft für
-// jede Zeile emit auf. Der Subprozess wird über ctx gesteuert: Wird ctx
-// abgebrochen (Unsubscribe/Verbindungsabbruch), beendet CommandContext den
-// journalctl-Prozess — es läuft also nichts ohne aktive Subscription.
-func FollowJournal(ctx context.Context, q LogQuery, emit func(LogEntry)) error {
+// jede Zeile emit auf. Der Subprozess läuft im Benutzerkontext (r) und wird über
+// ctx gesteuert: Wird ctx abgebrochen (Unsubscribe/Verbindungsabbruch), beendet
+// CommandContext den journalctl-Prozess — es läuft also nichts ohne aktive
+// Subscription.
+func FollowJournal(ctx context.Context, r *Runner, q LogQuery, emit func(LogEntry)) error {
 	if !commandExists("journalctl") {
 		return errMissingTool("journalctl")
 	}
@@ -33,7 +33,7 @@ func FollowJournal(ctx context.Context, q LogQuery, emit func(LogEntry)) error {
 		args = append(args, "-p", q.Priority)
 	}
 
-	cmd := exec.CommandContext(ctx, "journalctl", args...)
+	cmd := r.BuildCommand(ctx, false, "journalctl", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

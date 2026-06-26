@@ -1,39 +1,45 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"os/exec"
 
 	"github.com/clinictools/setup/internal/system"
 )
 
 // K3sStatus liefert Installations-/Laufzustand von k3s.
-func (a *API) K3sStatus(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, system.K3sGetStatus())
+func (a *API) K3sStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, system.K3sGetStatus(a.Runner(r)))
 }
 
 // K3sNodes liefert die Cluster-Knoten.
-func (a *API) K3sNodes(w http.ResponseWriter, _ *http.Request) {
-	handle(w, func() (any, error) { return system.K3sNodes() })
+func (a *API) K3sNodes(w http.ResponseWriter, r *http.Request) {
+	runner := a.Runner(r)
+	handle(w, func() (any, error) { return system.K3sNodes(runner) })
 }
 
 // K3sPods liefert die Pods aller Namespaces.
-func (a *API) K3sPods(w http.ResponseWriter, _ *http.Request) {
-	handle(w, func() (any, error) { return system.K3sPods() })
+func (a *API) K3sPods(w http.ResponseWriter, r *http.Request) {
+	runner := a.Runner(r)
+	handle(w, func() (any, error) { return system.K3sPods(runner) })
 }
 
 // K3sKubeconfig liefert die kubeconfig im Klartext.
-func (a *API) K3sKubeconfig(w http.ResponseWriter, _ *http.Request) {
+func (a *API) K3sKubeconfig(w http.ResponseWriter, r *http.Request) {
+	runner := a.Runner(r)
 	handle(w, func() (any, error) {
-		cfg, err := system.K3sKubeconfig()
+		cfg, err := system.K3sKubeconfig(runner)
 		return map[string]string{"kubeconfig": cfg}, err
 	})
 }
 
 // K3sToken liefert den Join-Token für Agent-Knoten.
-func (a *API) K3sToken(w http.ResponseWriter, _ *http.Request) {
+func (a *API) K3sToken(w http.ResponseWriter, r *http.Request) {
+	runner := a.Runner(r)
 	handle(w, func() (any, error) {
-		token, err := system.K3sNodeToken()
+		token, err := system.K3sNodeToken(runner)
 		return map[string]string{"token": token}, err
 	})
 }
@@ -65,16 +71,22 @@ func (a *API) K3sInstall(w http.ResponseWriter, r *http.Request) {
 	script := "curl -sfL https://get.k3s.io | " +
 		"INSTALL_K3S_EXEC='" + execArgs + "' " +
 		"K3S_KUBECONFIG_MODE='" + mode + "' sh -"
-	job := a.Jobs.Start("k3s installieren", "sh", []string{"-c", script})
+	runner := a.Runner(r)
+	job := a.Jobs.Start("k3s installieren", func(ctx context.Context) *exec.Cmd {
+		return runner.BuildCommand(ctx, true, "sh", "-c", script)
+	})
 	writeJSON(w, http.StatusAccepted, map[string]string{"jobId": job.ID})
 }
 
 // K3sUninstall startet das k3s-Deinstallationsskript als Job.
-func (a *API) K3sUninstall(w http.ResponseWriter, _ *http.Request) {
+func (a *API) K3sUninstall(w http.ResponseWriter, r *http.Request) {
 	if !system.K3sInstalled() {
 		writeError(w, http.StatusBadRequest, errors.New("k3s ist nicht installiert"))
 		return
 	}
-	job := a.Jobs.Start("k3s deinstallieren", "/usr/local/bin/k3s-uninstall.sh", nil)
+	runner := a.Runner(r)
+	job := a.Jobs.Start("k3s deinstallieren", func(ctx context.Context) *exec.Cmd {
+		return runner.BuildCommand(ctx, true, "/usr/local/bin/k3s-uninstall.sh")
+	})
 	writeJSON(w, http.StatusAccepted, map[string]string{"jobId": job.ID})
 }

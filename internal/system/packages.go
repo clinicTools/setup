@@ -100,12 +100,12 @@ func upgradablePackages() []Package {
 	return pkgs
 }
 
-// AptUpdate aktualisiert die Paketlisten (apt-get update).
-func AptUpdate() (string, error) {
+// AptUpdate aktualisiert die Paketlisten (apt-get update, privilegiert).
+func AptUpdate(r *Runner) (string, error) {
 	if !commandExists("apt-get") {
 		return "", errMissingTool("apt-get")
 	}
-	return run("apt-get", "update")
+	return r.sudo("apt-get", "update")
 }
 
 // AptUpgradeCount liefert nur die Anzahl aktualisierbarer Pakete (schnell).

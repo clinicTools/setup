@@ -21,10 +21,13 @@ type SessionManager struct {
 
 // claims ist die JWT-Nutzlast einer Session.
 type claims struct {
-	Username string   `json:"username"`
-	UID      int      `json:"uid"`
-	Admin    bool     `json:"admin"`
-	Groups   []string `json:"groups"`
+	Username  string   `json:"username"`
+	UID       int      `json:"uid"`
+	GID       int      `json:"gid"`
+	Admin     bool     `json:"admin"`
+	Groups    []string `json:"groups"`
+	GIDs      []int    `json:"gids"`
+	SessionID string   `json:"sid"`
 	jwt.RegisteredClaims
 }
 
@@ -34,14 +37,18 @@ func NewSessionManager(secret []byte, ttl time.Duration, secureCookie bool) *Ses
 	return &SessionManager{secret: secret, ttl: ttl, secureCookie: secureCookie}
 }
 
-// Issue setzt ein signiertes Session-Cookie für den Benutzer.
+// Issue setzt ein signiertes Session-Cookie für den Benutzer. u.SessionID muss
+// gesetzt sein (verknüpft die Session mit dem Credential-Store).
 func (m *SessionManager) Issue(w http.ResponseWriter, u *User) error {
 	now := time.Now()
 	c := claims{
-		Username: u.Username,
-		UID:      u.UID,
-		Admin:    u.Admin,
-		Groups:   u.Groups,
+		Username:  u.Username,
+		UID:       u.UID,
+		GID:       u.GID,
+		Admin:     u.Admin,
+		Groups:    u.Groups,
+		GIDs:      u.GIDs,
+		SessionID: u.SessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   u.Username,
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -99,9 +106,12 @@ func (m *SessionManager) Verify(r *http.Request) (*User, error) {
 	}
 
 	return &User{
-		Username: c.Username,
-		UID:      c.UID,
-		Admin:    c.Admin,
-		Groups:   c.Groups,
+		Username:  c.Username,
+		UID:       c.UID,
+		GID:       c.GID,
+		Admin:     c.Admin,
+		Groups:    c.Groups,
+		GIDs:      c.GIDs,
+		SessionID: c.SessionID,
 	}, nil
 }

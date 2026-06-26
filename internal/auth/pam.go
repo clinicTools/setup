@@ -78,6 +78,9 @@ func (a *Authenticator) Lookup(username string) (*User, error) {
 
 	if gids, err := u.GroupIds(); err == nil {
 		for _, g := range gids {
+			if n, err := strconv.Atoi(g); err == nil {
+				out.GIDs = append(out.GIDs, n)
+			}
 			grp, err := user.LookupGroupId(g)
 			if err != nil {
 				continue

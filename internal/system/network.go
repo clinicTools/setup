@@ -7,20 +7,20 @@ import (
 	"strings"
 )
 
-// SetHostname setzt den Systemhostnamen via hostnamectl.
-func SetHostname(name string) error {
+// SetHostname setzt den Systemhostnamen via hostnamectl (privilegiert).
+func SetHostname(r *Runner, name string) error {
 	if !validHostname(name) {
 		return fmt.Errorf("ungültiger Hostname: %q", name)
 	}
 	if !commandExists("hostnamectl") {
 		return errMissingTool("hostnamectl")
 	}
-	_, err := run("hostnamectl", "set-hostname", name)
+	_, err := r.sudo("hostnamectl", "set-hostname", name)
 	return err
 }
 
-// SetInterfaceState schaltet eine Netzwerkschnittstelle up oder down.
-func SetInterfaceState(iface string, up bool) error {
+// SetInterfaceState schaltet eine Netzwerkschnittstelle up oder down (privilegiert).
+func SetInterfaceState(r *Runner, iface string, up bool) error {
 	if !validIfaceName(iface) {
 		return fmt.Errorf("ungültige Schnittstelle: %q", iface)
 	}
@@ -31,7 +31,7 @@ func SetInterfaceState(iface string, up bool) error {
 	if up {
 		state = "up"
 	}
-	_, err := run("ip", "link", "set", iface, state)
+	_, err := r.sudo("ip", "link", "set", iface, state)
 	return err
 }
 

@@ -1,13 +1,17 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/clinictools/setup/internal/audit"
 	"github.com/clinictools/setup/internal/auth"
+	"github.com/clinictools/setup/internal/system"
 )
 
 // loginRequest ist der Body des Login-Endpunkts.
@@ -53,7 +57,23 @@ func (a *API) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.Limiter.Reset(key)
+
+	// Session-ID erzeugen und das Passwort für die Dauer der Sitzung im
+	// Credential-Store hinterlegen — es autorisiert spätere privilegierte
+	// Aktionen via sudo im Benutzerkontext (Cockpit-Modell).
+	user.SessionID = newSessionID()
+	a.Creds.Put(user.SessionID, req.Password)
+
+	// Admin-Status aus der tatsächlichen sudo-Berechtigung ableiten (OS als
+	// Autorität), nicht nur aus der Gruppenzugehörigkeit. Nur möglich, wenn der
+	// Dienst als root läuft und damit in den Benutzerkontext wechseln kann.
+	if os.Geteuid() == 0 {
+		runner := system.NewRunner(user.UID, user.GID, user.GIDs, user.Username, req.Password)
+		user.Admin = runner.CanEscalate()
+	}
+
 	if err := a.Sessions.Issue(w, user); err != nil {
+		a.Creds.Delete(user.SessionID)
 		writeError(w, http.StatusInternalServerError, errors.New("Session konnte nicht erstellt werden"))
 		return
 	}
@@ -62,11 +82,21 @@ func (a *API) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, user)
 }
 
-// Logout löscht Session- und CSRF-Cookie.
-func (a *API) Logout(w http.ResponseWriter, _ *http.Request) {
+// Logout löscht Session- und CSRF-Cookie und verwirft die Anmeldedaten.
+func (a *API) Logout(w http.ResponseWriter, r *http.Request) {
+	if u, err := a.Sessions.Verify(r); err == nil && u.SessionID != "" {
+		a.Creds.Delete(u.SessionID)
+	}
 	a.Sessions.Clear(w)
 	a.Sessions.ClearCSRF(w)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// newSessionID erzeugt eine zufällige Session-Kennung.
+func newSessionID() string {
+	buf := make([]byte, 16)
+	_, _ = rand.Read(buf)
+	return hex.EncodeToString(buf)
 }
 
 // clientIP extrahiert die Quell-IP (RemoteAddr ohne Port).

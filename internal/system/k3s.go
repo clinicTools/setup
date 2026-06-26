@@ -43,16 +43,16 @@ const (
 func K3sInstalled() bool { return commandExists("k3s") }
 
 // K3sGetStatus liefert den aktuellen k3s-Zustand.
-func K3sGetStatus() *K3sStatus {
+func K3sGetStatus(r *Runner) *K3sStatus {
 	st := &K3sStatus{Installed: K3sInstalled()}
 	if !st.Installed {
 		return st
 	}
-	if out, err := run("k3s", "--version"); err == nil {
+	if out, err := r.run("k3s", "--version"); err == nil {
 		st.Version = firstLine(out)
 	}
 	if commandExists("systemctl") {
-		if out, _ := run("systemctl", "is-active", "k3s"); out == "active" {
+		if out, _ := r.run("systemctl", "is-active", "k3s"); out == "active" {
 			st.Active = true
 		}
 	}
@@ -65,12 +65,13 @@ func K3sGetStatus() *K3sStatus {
 	return st
 }
 
-// K3sNodes liefert die Knoten des Clusters (k3s kubectl get nodes).
-func K3sNodes() ([]K3sNode, error) {
+// K3sNodes liefert die Knoten des Clusters (k3s kubectl get nodes). Erfordert
+// Zugriff auf die kubeconfig (root) und läuft daher privilegiert.
+func K3sNodes(r *Runner) ([]K3sNode, error) {
 	if !K3sInstalled() {
 		return nil, errMissingTool("k3s")
 	}
-	out, err := run("k3s", "kubectl", "get", "nodes", "-o", "json")
+	out, err := r.sudo("k3s", "kubectl", "get", "nodes", "-o", "json")
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +123,12 @@ func K3sNodes() ([]K3sNode, error) {
 	return nodes, nil
 }
 
-// K3sPods liefert alle Pods aller Namespaces.
-func K3sPods() ([]K3sPod, error) {
+// K3sPods liefert alle Pods aller Namespaces (privilegiert).
+func K3sPods(r *Runner) ([]K3sPod, error) {
 	if !K3sInstalled() {
 		return nil, errMissingTool("k3s")
 	}
-	out, err := run("k3s", "kubectl", "get", "pods", "-A", "-o", "json")
+	out, err := r.sudo("k3s", "kubectl", "get", "pods", "-A", "-o", "json")
 	if err != nil {
 		return nil, err
 	}
@@ -171,22 +172,16 @@ func K3sPods() ([]K3sPod, error) {
 	return pods, nil
 }
 
-// K3sKubeconfig liefert die kubeconfig (für externen Zugriff).
-func K3sKubeconfig() (string, error) {
-	data, err := os.ReadFile(k3sKubeconfigPath)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+// K3sKubeconfig liefert die kubeconfig (für externen Zugriff). Die Datei gehört
+// root; gelesen wird daher privilegiert im Benutzerkontext.
+func K3sKubeconfig(r *Runner) (string, error) {
+	return r.sudo("cat", k3sKubeconfigPath)
 }
 
-// K3sNodeToken liefert den Join-Token für Agent-Knoten.
-func K3sNodeToken() (string, error) {
-	data, err := os.ReadFile(k3sTokenPath)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
+// K3sNodeToken liefert den Join-Token für Agent-Knoten (privilegiert gelesen).
+func K3sNodeToken(r *Runner) (string, error) {
+	out, err := r.sudo("cat", k3sTokenPath)
+	return strings.TrimSpace(out), err
 }
 
 func firstLine(s string) string {

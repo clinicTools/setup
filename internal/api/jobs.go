@@ -1,9 +1,13 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"os"
+	"os/exec"
 
+	"github.com/clinictools/setup/internal/jobs"
 	"github.com/clinictools/setup/internal/system"
 	"github.com/go-chi/chi/v5"
 )
@@ -63,15 +67,23 @@ func (a *API) aptPackageJob(w http.ResponseWriter, r *http.Request, action, name
 		}
 	}
 	args := append([]string{"-y", action}, req.Packages...)
-	job := a.Jobs.StartEnv(name, "apt-get", args, aptEnv)
+	job := a.aptJob(r, name, args)
 	writeJSON(w, http.StatusAccepted, map[string]string{"jobId": job.ID})
 }
 
 // PackageUpgrade startet ein vollständiges System-Upgrade als Job.
-func (a *API) PackageUpgrade(w http.ResponseWriter, _ *http.Request) {
-	job := a.Jobs.StartEnv("System aktualisieren", "apt-get", []string{"-y", "upgrade"}, aptEnv)
+func (a *API) PackageUpgrade(w http.ResponseWriter, r *http.Request) {
+	job := a.aptJob(r, "System aktualisieren", []string{"-y", "upgrade"})
 	writeJSON(w, http.StatusAccepted, map[string]string{"jobId": job.ID})
 }
 
-// aptEnv sorgt für nicht-interaktive apt-Läufe (keine Debconf-Prompts).
-var aptEnv = []string{"DEBIAN_FRONTEND=noninteractive"}
+// aptJob startet apt-get als Job im Benutzerkontext (sudo) mit nicht-
+// interaktiver Umgebung (keine Debconf-Prompts).
+func (a *API) aptJob(r *http.Request, name string, args []string) *jobs.Job {
+	runner := a.Runner(r)
+	return a.Jobs.Start(name, func(ctx context.Context) *exec.Cmd {
+		cmd := runner.BuildCommand(ctx, true, "apt-get", args...)
+		cmd.Env = append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
+		return cmd
+	})
+}

@@ -12,7 +12,7 @@ import (
 // im Sekundentakt. CPU- und Netz-Raten werden aus der Differenz zweier
 // /proc-Messungen berechnet; der Zustand lebt als lokale Variable und ist damit
 // pro Subscription isoliert.
-func metricsChannel(ctx context.Context, _ json.RawMessage, emit Emitter) error {
+func metricsChannel(ctx context.Context, _ *system.Runner, _ json.RawMessage, emit Emitter) error {
 	prevCPU, _ := system.ReadCPUTimes()
 	prevNet, _ := system.ReadNetDev()
 	prevTime := time.Now()
@@ -59,7 +59,7 @@ func metricsChannel(ctx context.Context, _ json.RawMessage, emit Emitter) error 
 
 // journalChannel streamt neue Journal-Einträge (journalctl -f). Der Subprozess
 // existiert nur, solange die Subscription aktiv ist.
-func journalChannel(ctx context.Context, params json.RawMessage, emit Emitter) error {
+func journalChannel(ctx context.Context, runner *system.Runner, params json.RawMessage, emit Emitter) error {
 	var q struct {
 		Unit     string `json:"unit"`
 		Priority string `json:"priority"`
@@ -68,7 +68,7 @@ func journalChannel(ctx context.Context, params json.RawMessage, emit Emitter) e
 	if len(params) > 0 {
 		_ = json.Unmarshal(params, &q)
 	}
-	return system.FollowJournal(ctx, system.LogQuery{
+	return system.FollowJournal(ctx, runner, system.LogQuery{
 		Unit:     q.Unit,
 		Priority: q.Priority,
 		Lines:    q.Lines,
@@ -78,14 +78,14 @@ func journalChannel(ctx context.Context, params json.RawMessage, emit Emitter) e
 }
 
 // servicesChannel sendet alle 3 s eine aktuelle Dienst-Momentaufnahme.
-func servicesChannel(ctx context.Context, _ json.RawMessage, emit Emitter) error {
+func servicesChannel(ctx context.Context, _ *system.Runner, _ json.RawMessage, emit Emitter) error {
 	return pollLoop(ctx, 3*time.Second, func() (any, error) {
 		return system.Services()
 	}, emit)
 }
 
 // processesChannel sendet alle 2 s die Top-Prozesse nach Speicherverbrauch.
-func processesChannel(ctx context.Context, _ json.RawMessage, emit Emitter) error {
+func processesChannel(ctx context.Context, _ *system.Runner, _ json.RawMessage, emit Emitter) error {
 	return pollLoop(ctx, 2*time.Second, func() (any, error) {
 		return system.Processes(40)
 	}, emit)

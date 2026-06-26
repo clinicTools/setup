@@ -14,6 +14,11 @@ type User struct {
 	Shell   string `json:"shell"`
 	// Groups sind die aufgelösten Gruppennamen des Benutzers.
 	Groups []string `json:"groups"`
-	// Admin kennzeichnet Mitglieder einer privilegierten Gruppe.
+	// GIDs sind die numerischen Gruppen-IDs (für die Prozess-Credentials).
+	GIDs []int `json:"-"`
+	// Admin kennzeichnet, dass der Benutzer privilegierte Aktionen ausführen
+	// darf (per OS/sudo bestimmt, nicht nur per Gruppenmitgliedschaft).
 	Admin bool `json:"admin"`
+	// SessionID verknüpft den Benutzer mit seinem Credential-Store-Eintrag.
+	SessionID string `json:"-"`
 }

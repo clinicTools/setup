@@ -22,8 +22,10 @@ type LogQuery struct {
 	Lines    int    // Anzahl der jüngsten Zeilen (Default 200)
 }
 
-// Logs liest die jüngsten Journal-Einträge via journalctl (JSON-Ausgabe).
-func Logs(q LogQuery) ([]LogEntry, error) {
+// Logs liest die jüngsten Journal-Einträge via journalctl (JSON-Ausgabe). Die
+// Abfrage läuft im Benutzerkontext — ein unprivilegierter Benutzer sieht damit
+// nur die für ihn freigegebenen Journal-Einträge, nicht das gesamte System-Log.
+func Logs(r *Runner, q LogQuery) ([]LogEntry, error) {
 	if !commandExists("journalctl") {
 		return nil, errMissingTool("journalctl")
 	}
@@ -41,7 +43,7 @@ func Logs(q LogQuery) ([]LogEntry, error) {
 		args = append(args, "-p", q.Priority)
 	}
 
-	out, err := run("journalctl", args...)
+	out, err := r.run("journalctl", args...)
 	if err != nil {
 		return nil, err
 	}

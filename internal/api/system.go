@@ -51,8 +51,9 @@ func (a *API) Storage(w http.ResponseWriter, _ *http.Request) {
 	handle(w, func() (any, error) { return system.Storage() })
 }
 
-func (a *API) Firewall(w http.ResponseWriter, _ *http.Request) {
-	handle(w, func() (any, error) { return system.Firewall() })
+func (a *API) Firewall(w http.ResponseWriter, r *http.Request) {
+	runner := a.Runner(r)
+	handle(w, func() (any, error) { return system.Firewall(runner) })
 }
 
 func (a *API) Logs(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +62,8 @@ func (a *API) Logs(w http.ResponseWriter, r *http.Request) {
 		Priority: r.URL.Query().Get("priority"),
 		Lines:    atoiDefault(r.URL.Query().Get("lines"), 200),
 	}
-	handle(w, func() (any, error) { return system.Logs(q) })
+	runner := a.Runner(r)
+	handle(w, func() (any, error) { return system.Logs(runner, q) })
 }
 
 func (a *API) Scheduled(w http.ResponseWriter, _ *http.Request) {
@@ -94,7 +96,7 @@ func (a *API) ServiceAction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.ServiceAction(name, req.Action); err != nil {
+	if err := system.ServiceAction(a.Runner(r), name, req.Action); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -107,7 +109,7 @@ func (a *API) CreateUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.CreateUser(req); err != nil {
+	if err := system.CreateUser(a.Runner(r), req); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -117,7 +119,7 @@ func (a *API) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (a *API) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	removeHome := r.URL.Query().Get("removeHome") == "true"
-	if err := system.DeleteUser(name, removeHome); err != nil {
+	if err := system.DeleteUser(a.Runner(r), name, removeHome); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -135,7 +137,7 @@ func (a *API) SetPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("Passwort erforderlich"))
 		return
 	}
-	if err := system.SetPassword(name, req.Password); err != nil {
+	if err := system.SetPassword(a.Runner(r), name, req.Password); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -152,7 +154,7 @@ func (a *API) FirewallSet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.FirewallSetEnabled(req.Enabled); err != nil {
+	if err := system.FirewallSetEnabled(a.Runner(r), req.Enabled); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -169,7 +171,7 @@ func (a *API) SetTimezone(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.SetTimezone(req.Timezone); err != nil {
+	if err := system.SetTimezone(a.Runner(r), req.Timezone); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -182,16 +184,17 @@ func (a *API) SetNTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.SetNTP(req.Enabled); err != nil {
+	if err := system.SetNTP(a.Runner(r), req.Enabled); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-func (a *API) AptUpdate(w http.ResponseWriter, _ *http.Request) {
+func (a *API) AptUpdate(w http.ResponseWriter, r *http.Request) {
+	runner := a.Runner(r)
 	handle(w, func() (any, error) {
-		out, err := system.AptUpdate()
+		out, err := system.AptUpdate(runner)
 		return map[string]string{"output": out}, err
 	})
 }
@@ -206,7 +209,7 @@ func (a *API) Power(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.PowerAction(req.Action); err != nil {
+	if err := system.PowerAction(a.Runner(r), req.Action); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -227,7 +230,7 @@ func (a *API) FirewallAddRule(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.FirewallAddRule(req.Action, req.Port, req.Protocol); err != nil {
+	if err := system.FirewallAddRule(a.Runner(r), req.Action, req.Port, req.Protocol); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -240,7 +243,7 @@ func (a *API) FirewallDeleteRule(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.FirewallDeleteRule(req.Action, req.Port, req.Protocol); err != nil {
+	if err := system.FirewallDeleteRule(a.Runner(r), req.Action, req.Port, req.Protocol); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -260,7 +263,7 @@ func (a *API) CreateGroup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.CreateGroup(req.Name, req.System); err != nil {
+	if err := system.CreateGroup(a.Runner(r), req.Name, req.System); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -268,7 +271,7 @@ func (a *API) CreateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) DeleteGroup(w http.ResponseWriter, r *http.Request) {
-	if err := system.DeleteGroup(chi.URLParam(r, "name")); err != nil {
+	if err := system.DeleteGroup(a.Runner(r), chi.URLParam(r, "name")); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -286,7 +289,7 @@ func (a *API) ModifyUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.ModifyUser(chi.URLParam(r, "name"), req.Groups, req.Shell); err != nil {
+	if err := system.ModifyUser(a.Runner(r), chi.URLParam(r, "name"), req.Groups, req.Shell); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -303,7 +306,7 @@ func (a *API) KillProcess(w http.ResponseWriter, r *http.Request) {
 	pid := atoiDefault(chi.URLParam(r, "pid"), 0)
 	var req killRequest
 	_ = decode(r, &req)
-	if err := system.KillProcess(pid, req.Signal); err != nil {
+	if err := system.KillProcess(a.Runner(r), pid, req.Signal); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -325,7 +328,7 @@ func (a *API) CreateCron(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.CreateCronJob(req.Name, req.Schedule, req.User, req.Command); err != nil {
+	if err := system.CreateCronJob(a.Runner(r), req.Name, req.Schedule, req.User, req.Command); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -333,7 +336,7 @@ func (a *API) CreateCron(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) DeleteCron(w http.ResponseWriter, r *http.Request) {
-	if err := system.DeleteCronJob(chi.URLParam(r, "name")); err != nil {
+	if err := system.DeleteCronJob(a.Runner(r), chi.URLParam(r, "name")); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -352,7 +355,7 @@ func (a *API) SetHostname(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.SetHostname(req.Hostname); err != nil {
+	if err := system.SetHostname(a.Runner(r), req.Hostname); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}
@@ -369,7 +372,7 @@ func (a *API) SetInterfaceState(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, errors.New("ungültige Anfrage"))
 		return
 	}
-	if err := system.SetInterfaceState(chi.URLParam(r, "iface"), req.Up); err != nil {
+	if err := system.SetInterfaceState(a.Runner(r), chi.URLParam(r, "iface"), req.Up); err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
 	}

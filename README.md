@@ -48,6 +48,25 @@ Subprozess wird gestartet und seine Ausgabe **zeilenweise live über den
 WebSocket-Channel `jobs`** an eine Terminal-artige Konsole im Frontend gestreamt
 (mit Abbrechen-Funktion) — kein 30-Sekunden-Timeout.
 
+### Ausführung im Benutzerkontext (Cockpit-Modell)
+
+Wie bei Cockpit ist **das Betriebssystem die Autorität**: Der Dienst läuft zwar
+als root, **führt aber jedes Kommando unter der UID/GID des angemeldeten
+Benutzers aus** (`SysProcAttr.Credential`). Privilegierte Aktionen werden über
+**`sudo -S`** mit dem für die Sitzung gehaltenen Passwort eskaliert — die
+sudoers-Policy des Systems entscheidet, nicht die Anwendung.
+
+- **Lesende Kommandos** (z. B. `journalctl`) laufen als der Benutzer → ein
+  unprivilegierter Benutzer sieht nur sein eigenes Journal, nicht das System-Log.
+- **Schreibende/privilegierte Kommandos** (`systemctl`, `useradd`, `apt`, `ufw`,
+  k3s …) laufen via `sudo` → wer keine sudo-Rechte hat, wird vom OS abgewiesen.
+- Das **Admin-Flag** wird aus der tatsächlichen sudo-Berechtigung abgeleitet
+  (`sudo -v`), nicht aus der Gruppenzugehörigkeit.
+- Das Passwort wird beim Login einmalig erfasst und **AES-GCM-verschlüsselt im
+  Speicher** gehalten (flüchtiger Prozess-Schlüssel), nie geloggt, beim Logout
+  verworfen. Läuft der Dienst nicht als root (Entwicklung), wird ohne UID-Wechsel
+  direkt ausgeführt.
+
 ### Sicherheit
 
 - **Audit-Log** aller Schreibaktionen (RAM-Ringpuffer + optionale Datei `DA_AUDIT_LOG`)

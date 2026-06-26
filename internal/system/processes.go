@@ -7,29 +7,25 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 // KillProcess sendet ein Signal an einen Prozess. signal ∈ {TERM, KILL, HUP,
-// INT}. PIDs ≤ 1 sind nicht erlaubt (Schutz von init/Kernel-Threads).
-func KillProcess(pid int, signal string) error {
+// INT}. PIDs ≤ 1 sind nicht erlaubt (Schutz von init/Kernel-Threads). Das
+// Signal wird über das `kill`-Kommando im Benutzerkontext gesendet — so kann ein
+// unprivilegierter Benutzer nur eigene Prozesse beenden (das OS erzwingt es).
+func KillProcess(r *Runner, pid int, signal string) error {
 	if pid <= 1 {
 		return fmt.Errorf("ungültige PID: %d", pid)
 	}
-	var sig syscall.Signal
 	switch signal {
 	case "", "TERM":
-		sig = syscall.SIGTERM
-	case "KILL":
-		sig = syscall.SIGKILL
-	case "HUP":
-		sig = syscall.SIGHUP
-	case "INT":
-		sig = syscall.SIGINT
+		signal = "TERM"
+	case "KILL", "HUP", "INT":
 	default:
 		return fmt.Errorf("unzulässiges Signal: %q", signal)
 	}
-	return syscall.Kill(pid, sig)
+	_, err := r.run("kill", "-"+signal, strconv.Itoa(pid))
+	return err
 }
 
 // Process beschreibt einen laufenden Prozess (aus /proc/<pid>).

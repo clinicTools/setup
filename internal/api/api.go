@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/clinictools/setup/internal/audit"
@@ -21,18 +22,34 @@ type API struct {
 	Jobs     *jobs.Manager
 	Audit    *audit.Logger
 	Limiter  *auth.RateLimiter
+	Creds    *auth.CredentialStore
 }
 
 // New erzeugt eine API-Instanz. Der Login-Limiter erlaubt 5 Fehlversuche je
 // 5 Minuten und sperrt danach 15 Minuten.
-func New(a *auth.Authenticator, s *auth.SessionManager, jm *jobs.Manager, al *audit.Logger) *API {
+func New(a *auth.Authenticator, s *auth.SessionManager, jm *jobs.Manager, al *audit.Logger, cs *auth.CredentialStore) *API {
 	return &API{
 		Auth:     a,
 		Sessions: s,
 		Jobs:     jm,
 		Audit:    al,
 		Limiter:  auth.NewRateLimiter(5, 5*time.Minute, 15*time.Minute),
+		Creds:    cs,
 	}
+}
+
+// Runner baut den Ausführungskontext einer Anfrage: Läuft der Dienst als root,
+// werden Kommandos unter UID/GID des angemeldeten Benutzers ausgeführt
+// (privilegierte via sudo mit dem in der Session gehaltenen Passwort). Läuft der
+// Dienst nicht als root (Entwicklung), wird direkt als aktueller Prozess
+// ausgeführt.
+func (a *API) Runner(r *http.Request) *system.Runner {
+	u := auth.UserFromContext(r.Context())
+	if u == nil || os.Geteuid() != 0 {
+		return system.RootRunner()
+	}
+	password, _ := a.Creds.Get(u.SessionID)
+	return system.NewRunner(u.UID, u.GID, u.GIDs, u.Username, password)
 }
 
 // writeJSON serialisiert v als JSON mit dem angegebenen Statuscode.

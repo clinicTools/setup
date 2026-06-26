@@ -20,15 +20,16 @@ type FirewallRule struct {
 }
 
 // Firewall liest den UFW-Status. Ist ufw nicht installiert, wird Available=false
-// gemeldet (kein Fehler).
-func Firewall() (*FirewallStatus, error) {
+// gemeldet (kein Fehler). `ufw status` benötigt root und wird daher privilegiert
+// im Benutzerkontext ausgeführt.
+func Firewall(r *Runner) (*FirewallStatus, error) {
 	st := &FirewallStatus{}
 	if !commandExists("ufw") {
 		return st, nil
 	}
 	st.Available = true
 
-	out, err := run("ufw", "status", "verbose")
+	out, err := r.sudo("ufw", "status", "verbose")
 	if err != nil {
 		return st, nil
 	}
@@ -55,7 +56,7 @@ func Firewall() (*FirewallStatus, error) {
 
 // FirewallAddRule fügt eine UFW-Regel hinzu. action ∈ {allow, deny, reject,
 // limit}, port ist numerisch (1–65535), proto ∈ {"", tcp, udp}.
-func FirewallAddRule(action, port, proto string) error {
+func FirewallAddRule(r *Runner, action, port, proto string) error {
 	if !commandExists("ufw") {
 		return errMissingTool("ufw")
 	}
@@ -71,12 +72,12 @@ func FirewallAddRule(action, port, proto string) error {
 	} else if proto != "" {
 		return fmt.Errorf("ungültiges Protokoll: %q", proto)
 	}
-	_, err := run("ufw", action, target)
+	_, err := r.sudo("ufw", action, target)
 	return err
 }
 
 // FirewallDeleteRule entfernt eine UFW-Regel anhand ihrer Spezifikation.
-func FirewallDeleteRule(action, port, proto string) error {
+func FirewallDeleteRule(r *Runner, action, port, proto string) error {
 	if !commandExists("ufw") {
 		return errMissingTool("ufw")
 	}
@@ -87,7 +88,7 @@ func FirewallDeleteRule(action, port, proto string) error {
 	if proto == "tcp" || proto == "udp" {
 		target = port + "/" + proto
 	}
-	_, err := run("ufw", "--force", "delete", action, target)
+	_, err := r.sudo("ufw", "--force", "delete", action, target)
 	return err
 }
 
@@ -114,7 +115,7 @@ func validPort(p string) bool {
 }
 
 // FirewallSetEnabled aktiviert oder deaktiviert UFW.
-func FirewallSetEnabled(enabled bool) error {
+func FirewallSetEnabled(r *Runner, enabled bool) error {
 	if !commandExists("ufw") {
 		return errMissingTool("ufw")
 	}
@@ -122,6 +123,6 @@ func FirewallSetEnabled(enabled bool) error {
 	if enabled {
 		action = "enable"
 	}
-	_, err := run("ufw", "--force", action)
+	_, err := r.sudo("ufw", "--force", action)
 	return err
 }

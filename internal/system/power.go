@@ -5,7 +5,7 @@ import "fmt"
 // PowerAction führt einen System-Power-Vorgang aus.
 // action ∈ {reboot, poweroff}. Der Aufruf erfolgt über systemctl, sodass
 // laufende Dienste regulär heruntergefahren werden.
-func PowerAction(action string) error {
+func PowerAction(r *Runner, action string) error {
 	switch action {
 	case "reboot", "poweroff":
 	default:
@@ -14,6 +14,6 @@ func PowerAction(action string) error {
 	if !commandExists("systemctl") {
 		return errMissingTool("systemctl")
 	}
-	_, err := run("systemctl", action)
+	_, err := r.sudo("systemctl", action)
 	return err
 }

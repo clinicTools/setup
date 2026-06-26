@@ -88,8 +88,9 @@ func ServiceStatus(name string) (string, error) {
 }
 
 // ServiceAction führt eine Lifecycle-Operation auf einer Unit aus.
-// action ∈ {start, stop, restart, reload, enable, disable}.
-func ServiceAction(name, action string) error {
+// action ∈ {start, stop, restart, reload, enable, disable}. Die Ausführung
+// erfolgt privilegiert (sudo) im Kontext des angemeldeten Benutzers.
+func ServiceAction(r *Runner, name, action string) error {
 	if err := validUnit(name); err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func ServiceAction(name, action string) error {
 	default:
 		return fmt.Errorf("unbekannte Aktion: %q", action)
 	}
-	_, err := run("systemctl", action, name)
+	_, err := r.sudo("systemctl", action, name)
 	return err
 }
 

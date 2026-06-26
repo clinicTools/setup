@@ -63,20 +63,20 @@ func ListTimezones() ([]string, error) {
 	return lines(out), nil
 }
 
-// SetTimezone setzt die Systemzeitzone.
-func SetTimezone(tz string) error {
+// SetTimezone setzt die Systemzeitzone (privilegiert).
+func SetTimezone(r *Runner, tz string) error {
 	if !commandExists("timedatectl") {
 		return errMissingTool("timedatectl")
 	}
 	if !validTimezone(tz) {
 		return fmt.Errorf("ungültige Zeitzone: %q", tz)
 	}
-	_, err := run("timedatectl", "set-timezone", tz)
+	_, err := r.sudo("timedatectl", "set-timezone", tz)
 	return err
 }
 
-// SetNTP aktiviert/deaktiviert die NTP-Zeitsynchronisation.
-func SetNTP(enabled bool) error {
+// SetNTP aktiviert/deaktiviert die NTP-Zeitsynchronisation (privilegiert).
+func SetNTP(r *Runner, enabled bool) error {
 	if !commandExists("timedatectl") {
 		return errMissingTool("timedatectl")
 	}
@@ -84,7 +84,7 @@ func SetNTP(enabled bool) error {
 	if enabled {
 		val = "true"
 	}
-	_, err := run("timedatectl", "set-ntp", val)
+	_, err := r.sudo("timedatectl", "set-ntp", val)
 	return err
 }
 

@@ -3,7 +3,6 @@ package system
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -12,7 +11,7 @@ const cronManagedPrefix = "debian-admin-"
 
 // CreateCronJob legt einen System-Cron-Job als verwaltete Datei unter
 // /etc/cron.d an. name dient als Dateibasis (nur [a-z0-9-]).
-func CreateCronJob(name, schedule, user, command string) error {
+func CreateCronJob(r *Runner, name, schedule, user, command string) error {
 	if !validCronName(name) {
 		return fmt.Errorf("ungültiger Name: %q", name)
 	}
@@ -28,15 +27,19 @@ func CreateCronJob(name, schedule, user, command string) error {
 
 	path := "/etc/cron.d/" + cronManagedPrefix + name
 	content := fmt.Sprintf("# Verwaltet von debian-admin\n%s %s %s\n", schedule, user, command)
-	return os.WriteFile(path, []byte(content), 0o644)
+	// Privilegiert schreiben: tee liest den Inhalt (hinter der sudo-Passwortzeile)
+	// von stdin und schreibt ihn nach /etc/cron.d.
+	_, err := r.sudoStdin(content, "tee", path)
+	return err
 }
 
 // DeleteCronJob entfernt einen zuvor angelegten verwalteten Cron-Job.
-func DeleteCronJob(name string) error {
+func DeleteCronJob(r *Runner, name string) error {
 	if !validCronName(name) {
 		return fmt.Errorf("ungültiger Name: %q", name)
 	}
-	return os.Remove("/etc/cron.d/" + cronManagedPrefix + name)
+	_, err := r.sudo("rm", "-f", "/etc/cron.d/"+cronManagedPrefix+name)
+	return err
 }
 
 func validCronName(name string) bool {

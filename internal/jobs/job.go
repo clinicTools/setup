@@ -9,11 +9,17 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
+
+// Builder erzeugt das auszuführende Kommando für einen Job mit dem übergebenen
+// (abbrechbaren) Context. So entscheidet der Aufrufer über Benutzerkontext,
+// sudo-Eskalation und Umgebung (via system.Runner), während der Job nur den
+// Lebenszyklus und das Streaming verwaltet.
+type Builder func(ctx context.Context) *exec.Cmd
 
 // Status beschreibt den Lebenszyklus eines Jobs.
 type Status string
@@ -68,22 +74,19 @@ func newJob(id, name string) *Job {
 }
 
 // run startet den Subprozess und verteilt dessen Ausgabe. Läuft in eigener
-// Goroutine bis zum Prozessende. env ergänzt die Prozessumgebung.
-func (j *Job) run(ctx context.Context, name string, args, env []string) {
-	ctx, cancel := context.WithCancel(ctx)
+// Goroutine bis zum Prozessende.
+func (j *Job) run(parent context.Context, build Builder) {
+	ctx, cancel := context.WithCancel(parent)
 	j.mu.Lock()
 	j.cancel = cancel
 	j.mu.Unlock()
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, name, args...)
-	if len(env) > 0 {
-		cmd.Env = append(os.Environ(), env...)
-	}
+	cmd := build(ctx)
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 
-	j.appendLine("system", "$ "+name+" "+joinArgs(args))
+	j.appendLine("system", "$ "+strings.Join(redactArgs(cmd.Args), " "))
 
 	if err := cmd.Start(); err != nil {
 		j.finish(StatusFailed, 1, err.Error())
@@ -193,13 +196,16 @@ func (j *Job) Cancel() {
 	}
 }
 
-func joinArgs(args []string) string {
-	out := ""
-	for i, a := range args {
-		if i > 0 {
-			out += " "
+// redactArgs bereitet die Kommandozeile für die Anzeige auf: Eine
+// sudo-Eskalation wird auf „sudo <kommando> …" verkürzt (die Flags -S/-k/-p
+// sind nur Mechanik; das Passwort steht ohnehin auf stdin, nie in den Args).
+func redactArgs(args []string) []string {
+	if len(args) > 0 && args[0] == "sudo" {
+		for i, a := range args {
+			if a == "--" {
+				return append([]string{"sudo"}, args[i+1:]...)
+			}
 		}
-		out += a
 	}
-	return out
+	return args
 }

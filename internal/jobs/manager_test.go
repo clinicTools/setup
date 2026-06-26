@@ -1,14 +1,23 @@
 package jobs
 
 import (
+	"context"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
 )
 
+// cmd ist ein Builder-Helfer für die Tests.
+func cmd(name string, args ...string) Builder {
+	return func(ctx context.Context) *exec.Cmd {
+		return exec.CommandContext(ctx, name, args...)
+	}
+}
+
 func TestJobRunsAndStreams(t *testing.T) {
 	m := NewManager()
-	job := m.Start("echo", "echo", []string{"hallo-welt"})
+	job := m.Start("echo", cmd("echo", "hallo-welt"))
 
 	// Auf Abschluss warten.
 	select {
@@ -35,7 +44,7 @@ func TestJobRunsAndStreams(t *testing.T) {
 
 func TestJobFailureExitCode(t *testing.T) {
 	m := NewManager()
-	job := m.Start("false", "false", nil)
+	job := m.Start("false", cmd("false"))
 	select {
 	case <-job.Done():
 	case <-time.After(5 * time.Second):
@@ -48,7 +57,7 @@ func TestJobFailureExitCode(t *testing.T) {
 
 func TestManagerListAndGet(t *testing.T) {
 	m := NewManager()
-	job := m.Start("echo", "echo", []string{"x"})
+	job := m.Start("echo", cmd("echo", "x"))
 	<-job.Done()
 
 	if got, ok := m.Get(job.ID); !ok || got.ID != job.ID {

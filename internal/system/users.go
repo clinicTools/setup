@@ -130,7 +130,7 @@ type CreateUserRequest struct {
 }
 
 // CreateUser legt einen Benutzer via useradd an und setzt optional ein Passwort.
-func CreateUser(req CreateUserRequest) error {
+func CreateUser(r *Runner, req CreateUserRequest) error {
 	if !validUsername(req.Username) {
 		return fmt.Errorf("ungültiger Benutzername: %q", req.Username)
 	}
@@ -149,17 +149,17 @@ func CreateUser(req CreateUserRequest) error {
 	}
 	args = append(args, req.Username)
 
-	if _, err := run("useradd", args...); err != nil {
+	if _, err := r.sudo("useradd", args...); err != nil {
 		return err
 	}
 	if req.Password != "" {
-		return setPassword(req.Username, req.Password)
+		return setPassword(r, req.Username, req.Password)
 	}
 	return nil
 }
 
 // DeleteUser entfernt einen Benutzer; removeHome löscht zusätzlich das Home.
-func DeleteUser(username string, removeHome bool) error {
+func DeleteUser(r *Runner, username string, removeHome bool) error {
 	if !validUsername(username) {
 		return fmt.Errorf("ungültiger Benutzername: %q", username)
 	}
@@ -168,32 +168,32 @@ func DeleteUser(username string, removeHome bool) error {
 		args = append(args, "-r")
 	}
 	args = append(args, username)
-	_, err := run("userdel", args...)
+	_, err := r.sudo("userdel", args...)
 	return err
 }
 
 // SetPassword setzt das Passwort eines Benutzers via chpasswd.
-func SetPassword(username, password string) error {
+func SetPassword(r *Runner, username, password string) error {
 	if !validUsername(username) {
 		return fmt.Errorf("ungültiger Benutzername: %q", username)
 	}
-	return setPassword(username, password)
+	return setPassword(r, username, password)
 }
 
-func setPassword(username, password string) error {
-	cmd := newCommand("chpasswd")
-	cmd.Stdin = strings.NewReader(username + ":" + password + "\n")
-	return cmd.Run()
+func setPassword(r *Runner, username, password string) error {
+	// chpasswd liest „user:passwort" von stdin (hinter der sudo-Passwortzeile).
+	_, err := r.sudoStdin(username+":"+password+"\n", "chpasswd")
+	return err
 }
 
 // ModifyUser ändert Gruppenmitgliedschaft und/oder Login-Shell eines Benutzers.
-func ModifyUser(username string, groups []string, shell string) error {
+func ModifyUser(r *Runner, username string, groups []string, shell string) error {
 	if !validUsername(username) {
 		return fmt.Errorf("ungültiger Benutzername: %q", username)
 	}
 	if groups != nil {
 		// -G ersetzt die Zusatzgruppen vollständig.
-		if _, err := run("usermod", "-G", strings.Join(sanitizeNames(groups), ","), username); err != nil {
+		if _, err := r.sudo("usermod", "-G", strings.Join(sanitizeNames(groups), ","), username); err != nil {
 			return err
 		}
 	}
@@ -201,7 +201,7 @@ func ModifyUser(username string, groups []string, shell string) error {
 		if !validShell(shell) {
 			return fmt.Errorf("ungültige Shell: %q", shell)
 		}
-		if _, err := run("usermod", "-s", shell, username); err != nil {
+		if _, err := r.sudo("usermod", "-s", shell, username); err != nil {
 			return err
 		}
 	}
@@ -209,7 +209,7 @@ func ModifyUser(username string, groups []string, shell string) error {
 }
 
 // CreateGroup legt eine Gruppe an (system = Systemgruppe via -r).
-func CreateGroup(name string, systemGroup bool) error {
+func CreateGroup(r *Runner, name string, systemGroup bool) error {
 	if !validUsername(name) {
 		return fmt.Errorf("ungültiger Gruppenname: %q", name)
 	}
@@ -218,16 +218,16 @@ func CreateGroup(name string, systemGroup bool) error {
 		args = append(args, "-r")
 	}
 	args = append(args, name)
-	_, err := run("groupadd", args...)
+	_, err := r.sudo("groupadd", args...)
 	return err
 }
 
 // DeleteGroup entfernt eine Gruppe.
-func DeleteGroup(name string) error {
+func DeleteGroup(r *Runner, name string) error {
 	if !validUsername(name) {
 		return fmt.Errorf("ungültiger Gruppenname: %q", name)
 	}
-	_, err := run("groupdel", name)
+	_, err := r.sudo("groupdel", name)
 	return err
 }
 

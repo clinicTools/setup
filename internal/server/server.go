@@ -25,10 +25,12 @@ func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 	sessions := auth.NewSessionManager(cfg.SessionSecret, cfg.SessionTTL, !cfg.AllowInsecureCookie)
 	jobMgr := jobs.NewManager()
 	auditLog := audit.New(cfg.AuditLogPath)
-	a := api.New(authn, sessions, jobMgr, auditLog)
+	credStore := auth.NewCredentialStore(cfg.SessionTTL)
+	a := api.New(authn, sessions, jobMgr, auditLog, credStore)
 
 	activity := ws.NewActivity()
-	wsHandler := ws.NewHandler(ws.NewRegistry(jobMgr), activity, cfg.Dev)
+	// a.Runner baut den Benutzerkontext einer Verbindung (für Channels wie journal).
+	wsHandler := ws.NewHandler(ws.NewRegistry(jobMgr), activity, a.Runner, cfg.Dev)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)

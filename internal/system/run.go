@@ -88,12 +88,6 @@ func runCtx(parent context.Context, name string, args ...string) (string, error)
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// newCommand erzeugt ein exec.Cmd, dessen Stdin der Aufrufer setzen kann
-// (z. B. chpasswd). Anders als run wird keine Ausgabe eingesammelt.
-func newCommand(name string, args ...string) *exec.Cmd {
-	return exec.Command(name, args...)
-}
-
 // commandExists prüft, ob ein Programm im PATH auffindbar ist. Damit lassen
 // sich optionale Werkzeuge (ufw, timedatectl) elegant überspringen.
 func commandExists(name string) bool {

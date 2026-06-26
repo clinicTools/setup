@@ -19,23 +19,18 @@ func NewManager() *Manager {
 	return &Manager{jobs: map[string]*Job{}}
 }
 
-// Start legt einen Job an und startet das Kommando asynchron. Die Argumente
-// werden vom Aufrufer (Server) zusammengestellt — niemals direkt aus
-// Client-Eingaben, um Command-Injection auszuschließen.
-func (m *Manager) Start(name, command string, args []string) *Job {
-	return m.StartEnv(name, command, args, nil)
-}
-
-// StartEnv verhält sich wie Start, ergänzt aber die Prozessumgebung (z. B.
-// DEBIAN_FRONTEND=noninteractive für apt).
-func (m *Manager) StartEnv(name, command string, args, env []string) *Job {
+// Start legt einen Job an und startet ihn asynchron. Das auszuführende Kommando
+// liefert der Builder (typisch via system.Runner, sodass es im Benutzerkontext
+// mit sudo-Eskalation läuft). Argumente werden serverseitig zusammengestellt —
+// niemals direkt aus Client-Eingaben, um Command-Injection auszuschließen.
+func (m *Manager) Start(name string, build Builder) *Job {
 	job := newJob(generateID(), name)
 
 	m.mu.Lock()
 	m.jobs[job.ID] = job
 	m.mu.Unlock()
 
-	go job.run(context.Background(), command, args, env)
+	go job.run(context.Background(), build)
 	return job
 }
 

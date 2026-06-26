@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clinictools/setup/internal/system"
 	"github.com/gorilla/websocket"
 )
 
@@ -19,19 +20,25 @@ const (
 	outboxCapacity = 256
 )
 
+// RunnerFactory liefert den Benutzerkontext (Runner) einer Verbindung anhand
+// des authentifizierten Requests.
+type RunnerFactory func(*http.Request) *system.Runner
+
 // Handler nimmt WebSocket-Verbindungen entgegen und verwaltet ihre Subscriptions.
 type Handler struct {
 	registry Registry
 	activity *Activity
+	runner   RunnerFactory
 	upgrader websocket.Upgrader
 }
 
 // NewHandler erzeugt einen WS-Handler. dev lockert die Origin-Prüfung für den
-// Vite-Dev-Server.
-func NewHandler(registry Registry, activity *Activity, dev bool) *Handler {
+// Vite-Dev-Server; runner baut den Benutzerkontext je Verbindung.
+func NewHandler(registry Registry, activity *Activity, runner RunnerFactory, dev bool) *Handler {
 	return &Handler{
 		registry: registry,
 		activity: activity,
+		runner:   runner,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 4096,
@@ -72,6 +79,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		socket:   socket,
 		registry: h.registry,
 		activity: h.activity,
+		runner:   h.runner(r),
 		outbox:   make(chan ServerMessage, outboxCapacity),
 		subs:     map[string]context.CancelFunc{},
 	}
@@ -83,6 +91,7 @@ type conn struct {
 	socket   *websocket.Conn
 	registry Registry
 	activity *Activity
+	runner   *system.Runner
 	outbox   chan ServerMessage
 
 	mu   sync.Mutex
@@ -174,7 +183,7 @@ func (c *conn) subscribe(parent context.Context, msg ClientMessage) {
 
 	go func() {
 		defer c.unsubscribe(msg.ID)
-		if err := run(subCtx, msg.Params, emit); err != nil && subCtx.Err() == nil {
+		if err := run(subCtx, c.runner, msg.Params, emit); err != nil && subCtx.Err() == nil {
 			c.send(ServerMessage{Type: "error", ID: msg.ID, Channel: msg.Channel, Error: err.Error()})
 		}
 	}()

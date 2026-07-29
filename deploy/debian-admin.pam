@@ -1,0 +1,6 @@
+# PAM-Stack für die Debian-Admin-Anmeldung (-> /etc/pam.d/debian-admin).
+# Verwendet die gemeinsamen Systemregeln, sodass Anmeldung exakt wie bei einem
+# regulären Login gegen /etc/shadow (bzw. konfigurierte PAM-Module) erfolgt.
+
+auth     required pam_unix.so
+account  required pam_unix.so

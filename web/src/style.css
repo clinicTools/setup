@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+/*
+ * Designsystem — kombiniert die KIS-Oberfläche (shadcn new-york, blaue
+ * Primärfarbe, oklch-Tokens, Hell/Dunkel) mit Gestaltungsmustern der
+ * Windows-11-Einstellungen (Navigationsleiste mit Akzent-Pille,
+ * SettingsCards mit Icon + Titel + Beschreibung + rechtsbündiger Aktion,
+ * abgerundete Karten, Mica-artiger Hintergrund).
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans:
+    "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "Cascadia Code", "Segoe UI Mono", SFMono-Regular, Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(0.995 0.001 264);
+  --card-foreground: oklch(0.16 0.01 264);
+  --popover: oklch(0.995 0.001 264);
+  --popover-foreground: oklch(0.16 0.01 264);
+  --primary: oklch(54.6% 0.245 262.881);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.955 0.003 264);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.955 0.003 264);
+  --muted-foreground: oklch(0.5 0.01 264);
+  --accent: oklch(0.95 0.012 264);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.6 0.13 155);
+  --warning: oklch(0.75 0.15 80);
+  --border: oklch(0.9 0.004 264);
+  --input: oklch(0.9 0.004 264);
+  --ring: oklch(54.6% 0.245 262.881);
+  /* Acrylic-Navigationsleiste (halbtransparent über dem Mica-Hintergrund). */
+  --sidebar: oklch(0.98 0.003 264 / 0.72);
+  --sidebar-foreground: oklch(0.16 0.01 264);
+  --sidebar-accent: oklch(0.92 0.03 264);
+  /* Mica-Basisfarbe + Bloom-Töne. */
+  --mica: oklch(0.965 0.005 264);
+  --bloom-1: oklch(0.62 0.19 263);
+  --bloom-2: oklch(0.68 0.16 320);
+}
+
+.dark {
+  --background: oklch(0.18 0.006 264);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.225 0.006 264);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.225 0.006 264);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.66 0.17 263);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.27 0.006 264);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.27 0.006 264);
+  --muted-foreground: oklch(0.72 0.01 264);
+  --accent: oklch(0.3 0.03 263);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.7 0.15 155);
+  --warning: oklch(0.8 0.15 80);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.66 0.17 263);
+  --sidebar: oklch(0.2 0.006 264 / 0.6);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.34 0.05 263);
+  --mica: oklch(0.17 0.008 264);
+  --bloom-1: oklch(0.5 0.2 263);
+  --bloom-2: oklch(0.5 0.16 320);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+  body {
+    /* Mica-Material: getönte Basisfarbe mit weichen Farb-„Blooms", die durch
+       die halbtransparenten Flächen (Navigationsleiste) durchscheinen. */
+    background-color: var(--mica);
+    background-image:
+      radial-gradient(
+        1200px 720px at 0% -5%,
+        color-mix(in oklab, var(--bloom-1) 14%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        1100px 760px at 105% 110%,
+        color-mix(in oklab, var(--bloom-2) 13%, transparent),
+        transparent 58%
+      );
+    background-attachment: fixed;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-synthesis: none;
+    /* Kein Gummiband-Scrollen / kein Pull-to-Refresh — wie eine Desktop-App. */
+    overscroll-behavior: none;
+  }
+
+  /*
+   * Native Anmutung: Eine Desktop-Anwendung erlaubt keine Textauswahl auf
+   * Bedienelementen und zeigt keinen „Hand"-Cursor über Schaltflächen. Inhalte,
+   * die man kopieren können muss (Logs, Code, Werte), erhalten `.app-selectable`.
+   */
+  #app {
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: default;
+  }
+  button,
+  a,
+  [role="button"],
+  summary,
+  label {
+    cursor: default;
+  }
+  .app-selectable,
+  input,
+  textarea,
+  pre,
+  code {
+    user-select: text;
+  }
+  input,
+  textarea {
+    cursor: text;
+  }
+  img,
+  svg {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  /* Fokus nur bei Tastaturbedienung sichtbar (Windows-11-Fokusring). */
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 1px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
+}
+
+/* Dezente, an Windows 11 angelehnte Scrollbar (Thumb erst beim Überfahren). */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.2s ease;
+  }
+  .scrollbar-thin:hover {
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    border: 4px solid transparent;
+    background-clip: content-box;
+    transition: background-color 0.15s ease;
+  }
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+
+  /* Inhalt, der kopierbar sein soll (Logs, Code, Kennwerte). */
+  .app-selectable {
+    user-select: text;
+  }
+}
+
+/*
+ * Seitenwechsel-Animation im Stil von Windows 11 („entrance": kurzer
+ * Versatz nach oben mit Ausblenden, 200 ms, beschleunigte Kurve).
+ */
+@layer components {
+  .page-enter-active {
+    transition:
+      opacity 0.2s cubic-bezier(0, 0, 0, 1),
+      transform 0.2s cubic-bezier(0, 0, 0, 1);
+  }
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  /* Windows-11-Schaltfläche: dezente dunklere Unterkante statt Schlagschatten. */
+  .fluent-edge {
+    box-shadow: inset 0 -1px 0 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active {
+    transition: none;
+  }
+}

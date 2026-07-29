@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "groups": {
+      "system": "System",
+      "networkDevices": "Netzwerk & Geräte",
+      "appsContainers": "Apps & Container",
+      "accountsSecurity": "Konten & Sicherheit",
+      "tasksDiagnostics": "Aufgaben & Diagnose"
+    },
+    "items": {
+      "dashboard": "Übersicht",
+      "processes": "Prozesse",
+      "services": "Dienste",
+      "users": "Benutzer & Gruppen",
+      "network": "Netzwerk",
+      "storage": "Speicher",
+      "packages": "Pakete & Updates",
+      "containers": "Container",
+      "stacks": "Compose-Stacks",
+      "firewall": "Firewall",
+      "audit": "Audit-Protokoll",
+      "scheduled": "Geplante Aufgaben",
+      "datetime": "Datum & Uhrzeit",
+      "logs": "Systemprotokolle"
+    }
+  },
+  "common": {
+    "refresh": "Aktualisieren",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "create": "Anlegen",
+    "delete": "Löschen",
+    "add": "Hinzufügen",
+    "loading": "Wird geladen …",
+    "search": "Suchen"
+  },
+  "connection": {
+    "live": "Live",
+    "connecting": "Verbinde …",
+    "disconnected": "Getrennt"
+  },
+  "shell": {
+    "subtitle": "Systemverwaltung",
+    "searchSetting": "Einstellung suchen",
+    "administrator": "Administrator",
+    "user": "Benutzer",
+    "logout": "Abmelden",
+    "lightTheme": "Helles Design",
+    "darkTheme": "Dunkles Design",
+    "power": "Energieoptionen",
+    "rebootTitle": "System neu starten?",
+    "rebootMessage": "Alle laufenden Dienste werden ordnungsgemäß beendet und das System startet neu.",
+    "rebootConfirm": "Neu starten"
+  },
+  "login": {
+    "subtitle": "Anmeldung mit Ihrem Systembenutzerkonto",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "submitting": "Anmeldung läuft …",
+    "pamNote": "Die Authentifizierung erfolgt über PAM gegen das Betriebssystem.",
+    "failed": "Anmeldung fehlgeschlagen"
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "description": "Status und Eckdaten dieses Debian-Systems"
+  }
+}

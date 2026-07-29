@@ -1,0 +1,18 @@
+# Go
+/bin/
+/debian-admin
+*.test
+*.out
+
+# Node / Frontend
+web/node_modules/
+web/.vite/
+*.log
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
+
+# Hinweis: internal/web/dist (gebautes Frontend) wird absichtlich eingecheckt,
+# damit `go build` ohne vorherigen Frontend-Build ein lauffähiges Binary erzeugt.

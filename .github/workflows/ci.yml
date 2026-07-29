@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: PAM-Header installieren (CGO)
+        run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: CGO_ENABLED=1 go test ./...
+      - name: Build
+        run: CGO_ENABLED=1 go build ./cmd/debian-admin
+
+  frontend:
+    name: Frontend (Vue)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Abhängigkeiten installieren
+        run: npm ci
+      - name: Typprüfung
+        run: npm run typecheck
+      - name: Build
+        run: npm run build:nocheck

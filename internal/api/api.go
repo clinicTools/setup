@@ -50,7 +50,7 @@ func (a *API) Runner(r *http.Request) *system.Runner {
 		return system.RootRunner()
 	}
 	password, _ := a.Creds.Get(u.SessionID)
-	return system.NewRunner(u.UID, u.GID, u.GIDs, u.Username, password)
+	return system.NewRunner(u.UID, u.GID, u.GIDs, u.Username, u.HomeDir, password)
 }
 
 // writeJSON serialisiert v als JSON mit dem angegebenen Statuscode.
@@ -72,8 +72,14 @@ func writeError(w http.ResponseWriter, status int, err error) {
 func handle(w http.ResponseWriter, fn func() (any, error)) {
 	data, err := fn()
 	if err != nil {
-		var missing *system.ErrCommandFailed
-		if errors.As(err, &missing) {
+		// Eingabefehler des Aufrufers → 400, fehlgeschlagene Systemkommandos → 502.
+		var invalid *system.ErrInvalidInput
+		if errors.As(err, &invalid) {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		var failed *system.ErrCommandFailed
+		if errors.As(err, &failed) {
 			writeError(w, http.StatusBadGateway, err)
 			return
 		}

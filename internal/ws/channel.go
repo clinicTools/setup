@@ -28,11 +28,13 @@ type Registry map[string]RunFunc
 // wird für den „jobs"-Channel (Live-Log-Verfolgung) benötigt.
 func NewRegistry(jm *jobs.Manager) Registry {
 	return Registry{
-		"metrics":   metricsChannel,
-		"journal":   journalChannel,
-		"services":  servicesChannel,
-		"processes": processesChannel,
-		"jobs":      jobsChannel(jm),
+		"metrics":       metricsChannel,
+		"journal":       journalChannel,
+		"services":      servicesChannel,
+		"processes":     processesChannel,
+		"containers":    containersChannel,
+		"containerlogs": containerLogsChannel,
+		"jobs":          jobsChannel(jm),
 	}
 }
 

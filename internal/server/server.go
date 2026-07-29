@@ -89,11 +89,12 @@ func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 				r.Get("/system/audit", a.AuditList)
 				r.Get("/system/jobs", a.JobsList)
 				r.Get("/system/jobs/{id}", a.JobGet)
-				r.Get("/system/k3s/status", a.K3sStatus)
-				r.Get("/system/k3s/nodes", a.K3sNodes)
-				r.Get("/system/k3s/pods", a.K3sPods)
-				r.Get("/system/k3s/kubeconfig", a.K3sKubeconfig)
-				r.Get("/system/k3s/token", a.K3sToken)
+				// Podman (Lesen)
+				r.Get("/system/podman/status", a.PodmanStatus)
+				r.Get("/system/podman/containers", a.Containers)
+				r.Get("/system/podman/containers/{id}/logs", a.ContainerLogs)
+				r.Get("/system/podman/images", a.ContainerImages)
+				r.Get("/system/podman/volumes", a.ContainerVolumes)
 
 				// Schreibende Endpunkte: Admin-Gruppe + CSRF + Audit.
 				r.Group(func(r chi.Router) {
@@ -132,9 +133,15 @@ func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 					r.Put("/system/network/interfaces/{iface}", a.SetInterfaceState)
 					// Jobs
 					r.Post("/system/jobs/{id}/cancel", a.JobCancel)
-					// k3s
-					r.Post("/system/k3s/install", a.K3sInstall)
-					r.Post("/system/k3s/uninstall", a.K3sUninstall)
+					// Podman & Compose-Stacks (compose.yaml kann Zugangsdaten
+					// enthalten → auch das Lesen ist Admins vorbehalten)
+					r.Post("/system/podman/install", a.PodmanInstall)
+					r.Post("/system/podman/containers/{id}/action", a.ContainerAction)
+					r.Get("/system/podman/stacks", a.Stacks)
+					r.Get("/system/podman/stacks/{name}", a.StackGet)
+					r.Put("/system/podman/stacks/{name}", a.StackWrite)
+					r.Delete("/system/podman/stacks/{name}", a.StackDelete)
+					r.Post("/system/podman/stacks/{name}/{action}", a.StackAction)
 					// Energie
 					r.Post("/system/power", a.Power)
 				})

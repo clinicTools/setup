@@ -3,7 +3,9 @@ package system
 import (
 	"bytes"
 	"context"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -22,12 +24,13 @@ type Runner struct {
 	cred     *syscall.Credential
 	password string
 	username string
+	home     string
 }
 
 // NewRunner erzeugt einen Runner für einen Benutzer. uid < 0 erzeugt einen
 // Runner ohne Credential (Direktausführung als aktueller Prozess).
-func NewRunner(uid, gid int, groups []int, username, password string) *Runner {
-	r := &Runner{password: password, username: username}
+func NewRunner(uid, gid int, groups []int, username, home, password string) *Runner {
+	r := &Runner{password: password, username: username, home: home}
 	if uid >= 0 {
 		g := make([]uint32, 0, len(groups))
 		for _, v := range groups {
@@ -43,6 +46,37 @@ func RootRunner() *Runner { return &Runner{} }
 
 // dropsPrivileges meldet, ob der Runner auf einen Benutzer wechselt.
 func (r *Runner) dropsPrivileges() bool { return r.cred != nil }
+
+// userEnv liefert die auf den Zielbenutzer angepasste Prozessumgebung.
+//
+// Beim UID-Wechsel würde das Kind sonst die Umgebung des Dienstes (root) erben —
+// insbesondere HOME=/root. Werkzeuge, die ihre Konfiguration im Home-Verzeichnis
+// suchen (podman, git, ssh …), scheitern dann mit „permission denied". Deshalb
+// werden die benutzerbezogenen Variablen ersetzt.
+func (r *Runner) userEnv() []string {
+	if !r.dropsPrivileges() {
+		return nil
+	}
+	env := make([]string, 0, len(os.Environ())+4)
+	for _, kv := range os.Environ() {
+		key, _, _ := strings.Cut(kv, "=")
+		switch key {
+		case "HOME", "USER", "LOGNAME", "SHELL", "MAIL", "XDG_RUNTIME_DIR":
+			continue // wird unten benutzerbezogen gesetzt
+		}
+		env = append(env, kv)
+	}
+	home := r.home
+	if home == "" {
+		home = "/home/" + r.username
+	}
+	return append(env,
+		"HOME="+home,
+		"USER="+r.username,
+		"LOGNAME="+r.username,
+		"XDG_RUNTIME_DIR=/run/user/"+strconv.FormatUint(uint64(r.cred.Uid), 10),
+	)
+}
 
 // run führt ein Kommando als der Benutzer aus und liefert stdout (getrimmt).
 func (r *Runner) run(name string, args ...string) (string, error) {
@@ -82,6 +116,7 @@ func (r *Runner) BuildCommand(ctx context.Context, privileged bool, name string,
 	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
 	if r.cred != nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: r.cred}
+		cmd.Env = r.userEnv()
 	}
 	if needsPw {
 		cmd.Stdin = strings.NewReader(r.password + "\n")
@@ -105,6 +140,7 @@ func (r *Runner) exec(stdin string, privileged bool, name string, args ...string
 	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
 	if r.cred != nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: r.cred}
+		cmd.Env = r.userEnv()
 	}
 	if stdinBuf.Len() > 0 {
 		cmd.Stdin = &stdinBuf
@@ -137,6 +173,7 @@ func (r *Runner) CanEscalate() bool {
 	// `sudo -S -v` validiert die Anmeldedaten und die sudo-Berechtigung.
 	cmd := exec.CommandContext(ctx, "sudo", "-S", "-k", "-p", "", "-v")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: r.cred}
+	cmd.Env = r.userEnv()
 	cmd.Stdin = strings.NewReader(r.password + "\n")
 	return cmd.Run() == nil
 }

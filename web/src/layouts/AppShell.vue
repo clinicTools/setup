@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
@@ -10,6 +10,7 @@ import {
   Power,
   Server,
   Menu,
+  ArrowLeft,
 } from "lucide-vue-next";
 import { navItems } from "@/nav";
 import { useTheme } from "@/composables/useTheme";
@@ -69,6 +70,36 @@ const initials = computed(() => {
   const name = auth.user?.fullName || auth.user?.username || "?";
   return name.slice(0, 2).toUpperCase();
 });
+
+// --- Native Bedienung: Zurück-Navigation und Tastaturkürzel ---
+
+const searchInput = ref<HTMLInputElement | null>(null);
+const canGoBack = computed(() => route.path !== "/");
+
+function goBack(): void {
+  if (window.history.state?.back) router.back();
+  else router.push("/");
+}
+
+/**
+ * Tastaturkürzel wie in einer Desktop-Anwendung:
+ *   Alt+←  zurück       Ctrl/⌘+F  Suche fokussieren       F5  neu laden
+ */
+function onKeydown(e: KeyboardEvent): void {
+  if (e.altKey && e.key === "ArrowLeft") {
+    e.preventDefault();
+    goBack();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+    e.preventDefault();
+    searchInput.value?.focus();
+    searchInput.value?.select();
+  }
+}
+
+onMounted(() => window.addEventListener("keydown", onKeydown));
+onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
@@ -116,10 +147,11 @@ const initials = computed(() => {
         <div class="relative">
           <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
+            ref="searchInput"
             v-model="search"
             type="search"
             :placeholder="t('shell.searchSetting')"
-            class="h-9 w-full rounded-lg border border-input bg-card/80 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="h-8 w-full rounded border border-input bg-card/80 pl-9 pr-3 text-[13px] placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </div>
       </div>
@@ -166,10 +198,21 @@ const initials = computed(() => {
 
     <!-- Inhalt -->
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="flex h-12 shrink-0 items-center justify-end gap-1 px-4">
-        <Button variant="ghost" size="icon" class="mr-auto md:hidden" @click="sidebarOpen = true">
+      <header class="flex h-12 shrink-0 items-center gap-1 px-4">
+        <Button variant="ghost" size="icon" class="md:hidden" @click="sidebarOpen = true">
           <Menu class="h-5 w-5" />
         </Button>
+        <!-- Zurück-Schaltfläche wie in den Windows-11-Einstellungen (Alt+←) -->
+        <Button
+          variant="ghost"
+          size="icon"
+          :disabled="!canGoBack"
+          title="Zurück (Alt+←)"
+          @click="goBack"
+        >
+          <ArrowLeft class="h-4 w-4" />
+        </Button>
+        <div class="flex-1" />
         <ConnectionStatus />
         <LanguageSwitcher />
         <Button variant="ghost" size="icon" :title="theme === 'dark' ? t('shell.lightTheme') : t('shell.darkTheme')" @click="toggle">
@@ -189,7 +232,12 @@ const initials = computed(() => {
 
       <main class="scrollbar-thin flex-1 overflow-y-auto">
         <div class="mx-auto max-w-[1080px] px-5 pb-10 pt-2 md:px-10">
-          <RouterView />
+          <!-- Windows-11-„Entrance"-Animation beim Seitenwechsel -->
+          <RouterView v-slot="{ Component, route: r }">
+            <Transition name="page" mode="out-in">
+              <component :is="Component" :key="r.path" />
+            </Transition>
+          </RouterView>
         </div>
       </main>
     </div>

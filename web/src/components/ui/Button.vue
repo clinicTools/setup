@@ -12,22 +12,25 @@ const props = withDefaults(
   { variant: "secondary", size: "md", disabled: false, type: "button" },
 );
 
+// Windows-11-/Fluent-Anmutung: 4-px-Radius, dezente dunklere Unterkante statt
+// Schlagschatten, kurze Anfassanimation beim Drücken.
 const classes = computed(() =>
   cn(
-    "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-    "disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex select-none items-center justify-center gap-2 rounded font-medium whitespace-nowrap",
+    "transition-all duration-100 active:scale-[0.98]",
+    "disabled:pointer-events-none disabled:opacity-40",
     {
-      primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70 border border-border",
-      outline: "border border-border bg-card hover:bg-accent hover:text-accent-foreground",
-      ghost: "hover:bg-accent hover:text-accent-foreground",
-      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+      primary: "bg-primary text-primary-foreground hover:bg-primary/90 fluent-edge",
+      secondary:
+        "bg-card text-secondary-foreground hover:bg-accent/60 border border-border fluent-edge",
+      outline: "border border-border bg-card hover:bg-accent/60 fluent-edge",
+      ghost: "hover:bg-accent/60 hover:text-accent-foreground",
+      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 fluent-edge",
     }[props.variant],
     {
       sm: "h-8 px-3 text-xs",
-      md: "h-9 px-4 text-sm",
-      icon: "h-9 w-9",
+      md: "h-8 px-4 text-[13px]",
+      icon: "h-8 w-8",
     }[props.size],
   ),
 );

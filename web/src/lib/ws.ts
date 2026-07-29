@@ -25,6 +25,9 @@ interface ServerMessage {
 
 class WsClient {
   readonly status = ref<WsStatus>("closed");
+  /** Anzahl aktiver Subscriptions — die Statusanzeige blendet sich aus,
+   *  wenn eine Seite gar keine Live-Daten benötigt. */
+  readonly active = ref(0);
 
   private socket: WebSocket | null = null;
   private subs = new Map<string, Subscription>();
@@ -48,6 +51,7 @@ class WsClient {
     const id = `s${++this.counter}`;
     const sub: Subscription = { id, channel, params, onMessage, onError, ready: false };
     this.subs.set(id, sub);
+    this.active.value = this.subs.size;
 
     this.ensureConnection();
     if (this.socket?.readyState === WebSocket.OPEN) this.sendSubscribe(sub);
@@ -57,6 +61,7 @@ class WsClient {
 
   private unsubscribe(id: string): void {
     if (!this.subs.delete(id)) return;
+    this.active.value = this.subs.size;
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({ type: "unsubscribe", id }));
     }

@@ -68,7 +68,7 @@ func (a *API) Login(w http.ResponseWriter, r *http.Request) {
 	// Autorität), nicht nur aus der Gruppenzugehörigkeit. Nur möglich, wenn der
 	// Dienst als root läuft und damit in den Benutzerkontext wechseln kann.
 	if os.Geteuid() == 0 {
-		runner := system.NewRunner(user.UID, user.GID, user.GIDs, user.Username, req.Password)
+		runner := system.NewRunner(user.UID, user.GID, user.GIDs, user.Username, user.HomeDir, req.Password)
 		user.Admin = runner.CanEscalate()
 	}
 

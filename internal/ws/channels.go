@@ -91,6 +91,28 @@ func processesChannel(ctx context.Context, _ *system.Runner, _ json.RawMessage, 
 	}, emit)
 }
 
+// containersChannel sendet alle 3 s den Zustand aller Podman-Container.
+func containersChannel(ctx context.Context, runner *system.Runner, _ json.RawMessage, emit Emitter) error {
+	return pollLoop(ctx, 3*time.Second, func() (any, error) {
+		return system.Containers(runner, true)
+	}, emit)
+}
+
+// containerLogsChannel streamt die Ausgabe eines Containers (`podman logs -f`).
+// Der Subprozess existiert nur, solange die Subscription aktiv ist.
+func containerLogsChannel(ctx context.Context, runner *system.Runner, params json.RawMessage, emit Emitter) error {
+	var p struct {
+		ID   string `json:"id"`
+		Tail int    `json:"tail"`
+	}
+	if len(params) > 0 {
+		_ = json.Unmarshal(params, &p)
+	}
+	return system.FollowContainerLogs(ctx, runner, p.ID, p.Tail, func(line string) {
+		emit(map[string]string{"line": line})
+	})
+}
+
 // pollLoop ruft fn sofort und danach im Intervall auf und emittiert das
 // Ergebnis. Schlägt bereits der erste Aufruf fehl, wird der Fehler zurück-
 // gegeben (der Client erhält eine error-Nachricht); spätere Fehler werden

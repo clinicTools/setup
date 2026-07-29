@@ -12,6 +12,7 @@ import {
   CalendarClock,
   Activity,
   Boxes,
+  Layers,
   ClipboardList,
 } from "lucide-vue-next";
 
@@ -33,7 +34,8 @@ export const navItems: NavItem[] = [
   { to: "/network", labelKey: "network", icon: Network, groupKey: "networkDevices" },
   { to: "/storage", labelKey: "storage", icon: HardDrive, groupKey: "networkDevices" },
   { to: "/packages", labelKey: "packages", icon: Package, groupKey: "appsContainers" },
-  { to: "/k3s", labelKey: "k3s", icon: Boxes, groupKey: "appsContainers" },
+  { to: "/containers", labelKey: "containers", icon: Boxes, groupKey: "appsContainers" },
+  { to: "/stacks", labelKey: "stacks", icon: Layers, groupKey: "appsContainers" },
   { to: "/users", labelKey: "users", icon: Users, groupKey: "accountsSecurity" },
   { to: "/firewall", labelKey: "firewall", icon: ShieldCheck, groupKey: "accountsSecurity" },
   { to: "/audit", labelKey: "audit", icon: ClipboardList, groupKey: "accountsSecurity" },

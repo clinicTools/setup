@@ -7,6 +7,9 @@ import { ws } from "@/lib/ws";
 // Spiegelt den Live-Verbindungsstatus (analog zur Cockpit-Statusanzeige).
 const { t } = useI18n();
 const status = ws.status;
+// Ohne aktive Live-Abonnements ist „getrennt" der Normalzustand — dann wird
+// die Anzeige ausgeblendet, statt einen Fehler zu suggerieren.
+const visible = computed(() => ws.active.value > 0 || status.value !== "closed");
 const label = computed(
   () =>
     ({
@@ -19,6 +22,7 @@ const label = computed(
 
 <template>
   <div
+    v-if="visible"
     class="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium"
     :class="
       status === 'open'

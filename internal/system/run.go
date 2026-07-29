@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -41,6 +43,15 @@ func readDir(path string) ([]string, error) {
 func unixMicroRFC3339(usec int64) string {
 	return time.UnixMicro(usec).UTC().Format(time.RFC3339)
 }
+
+// unixSecRFC3339 formatiert einen Unix-Sekunden-Zeitstempel als RFC3339.
+func unixSecRFC3339(sec int64) string {
+	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
+}
+
+// itoa wandelt eine Ganzzahl in ihre Dezimaldarstellung (ohne strconv-Import
+// in den Aufrufern).
+func itoa(n int) string { return strconv.Itoa(n) }
 
 // defaultTimeout begrenzt die Laufzeit externer Kommandos.
 const defaultTimeout = 30 * time.Second
@@ -110,4 +121,16 @@ func lines(s string) []string {
 // errMissingTool beschreibt ein nicht installiertes optionales Werkzeug.
 func errMissingTool(tool string) error {
 	return errors.New("Werkzeug nicht verfügbar: " + tool)
+}
+
+// ErrInvalidInput kennzeichnet einen Eingabefehler des Aufrufers. Die API bildet
+// solche Fehler auf HTTP 400 ab (statt 500), damit Client-Fehler von
+// Server-Fehlern unterscheidbar bleiben.
+type ErrInvalidInput struct{ Msg string }
+
+func (e *ErrInvalidInput) Error() string { return e.Msg }
+
+// invalidInput erzeugt einen formatierten Eingabefehler.
+func invalidInput(format string, args ...any) error {
+	return &ErrInvalidInput{Msg: fmt.Sprintf(format, args...)}
 }

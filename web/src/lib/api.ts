@@ -16,9 +16,11 @@ import type {
   Process,
   Job,
   AuditEntry,
-  K3sStatus,
-  K3sNode,
-  K3sPod,
+  PodmanStatus,
+  Container,
+  ContainerImage,
+  ContainerVolume,
+  Stack,
 } from "./types";
 
 export class ApiError extends Error {
@@ -158,15 +160,29 @@ export const api = {
   // Audit
   audit: (limit = 200) => get<AuditEntry[]>(`/system/audit?limit=${limit}`),
 
-  // k3s
-  k3sStatus: () => get<K3sStatus>("/system/k3s/status"),
-  k3sNodes: () => get<K3sNode[]>("/system/k3s/nodes"),
-  k3sPods: () => get<K3sPod[]>("/system/k3s/pods"),
-  k3sKubeconfig: () => get<{ kubeconfig: string }>("/system/k3s/kubeconfig"),
-  k3sToken: () => get<{ token: string }>("/system/k3s/token"),
-  k3sInstall: (opts: { disableTraefik: boolean; writeKubeconfigMode: string }) =>
-    post<{ jobId: string }>("/system/k3s/install", opts),
-  k3sUninstall: () => post<{ jobId: string }>("/system/k3s/uninstall"),
+  // Podman
+  podmanStatus: () => get<PodmanStatus>("/system/podman/status"),
+  podmanInstall: () => post<{ jobId: string }>("/system/podman/install"),
+  containers: () => get<Container[]>("/system/podman/containers"),
+  containerLogs: (id: string, lines = 200) =>
+    get<{ logs: string }>(`/system/podman/containers/${encodeURIComponent(id)}/logs?lines=${lines}`),
+  containerAction: (id: string, action: string) =>
+    post<{ ok: boolean }>(`/system/podman/containers/${encodeURIComponent(id)}/action`, { action }),
+  containerImages: () => get<ContainerImage[]>("/system/podman/images"),
+  containerVolumes: () => get<ContainerVolume[]>("/system/podman/volumes"),
+
+  // Compose-Stacks
+  stacks: () => get<Stack[]>("/system/podman/stacks"),
+  stack: (name: string) =>
+    get<{ name: string; compose: string }>(`/system/podman/stacks/${encodeURIComponent(name)}`),
+  saveStack: (name: string, compose: string) =>
+    put<{ ok: boolean }>(`/system/podman/stacks/${encodeURIComponent(name)}`, { compose }),
+  deleteStack: (name: string) =>
+    del<{ ok: boolean }>(`/system/podman/stacks/${encodeURIComponent(name)}`),
+  stackAction: (name: string, action: string) =>
+    post<{ jobId: string }>(
+      `/system/podman/stacks/${encodeURIComponent(name)}/${encodeURIComponent(action)}`,
+    ),
 
   power: (action: "reboot" | "poweroff") => post<{ ok: boolean }>("/system/power", { action }),
 };

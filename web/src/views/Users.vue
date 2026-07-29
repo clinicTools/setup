@@ -290,7 +290,7 @@ async function confirmDeleteGroup(): Promise<void> {
           class="w-full max-w-sm space-y-4 rounded-xl border border-border bg-popover p-6 shadow-xl"
           @submit.prevent="setPassword"
         >
-          <h3 class="text-lg font-semibold">Passwort für „{{ pwTarget.username }}"</h3>
+          <h3 class="text-lg font-semibold">Passwort für „{{ pwTarget.username }}“</h3>
           <Input v-model="newPassword" type="password" placeholder="Neues Passwort" />
           <div class="flex justify-end gap-2">
             <Button variant="outline" type="button" @click="pwTarget = null">Abbrechen</Button>
@@ -311,7 +311,7 @@ async function confirmDeleteGroup(): Promise<void> {
           class="w-full max-w-md space-y-4 rounded-xl border border-border bg-popover p-6 shadow-xl"
           @submit.prevent="saveEdit"
         >
-          <h3 class="text-lg font-semibold">„{{ editTarget.username }}" bearbeiten</h3>
+          <h3 class="text-lg font-semibold">„{{ editTarget.username }}“ bearbeiten</h3>
           <div class="space-y-1.5">
             <label class="text-sm font-medium">Gruppen (kommagetrennt)</label>
             <Input v-model="editForm.groups" placeholder="sudo, docker" />

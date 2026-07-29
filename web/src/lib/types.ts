@@ -207,28 +207,50 @@ export interface AuditEntry {
   ip?: string;
 }
 
-export interface K3sStatus {
+export interface PodmanStatus {
   installed: boolean;
-  active: boolean;
   version?: string;
-  nodeName?: string;
-  hasUninstall: boolean;
+  composeAvailable: boolean;
+  composeCommand?: string;
+  socketActive: boolean;
+  containers: number;
+  running: number;
+  images: number;
 }
 
-export interface K3sNode {
+export interface Container {
+  id: string;
   name: string;
-  ready: boolean;
-  roles: string[] | null;
-  version: string;
-  ip?: string;
+  image: string;
+  state: string;
+  status: string;
+  created?: string;
+  ports: string[] | null;
+  stack?: string;
+  service?: string;
 }
 
-export interface K3sPod {
-  namespace: string;
+export interface ContainerImage {
+  id: string;
+  names: string[] | null;
+  size: number;
+  created?: string;
+}
+
+export interface ContainerVolume {
   name: string;
-  phase: string;
-  ready: string;
-  node?: string;
+  driver: string;
+  mountpoint: string;
+  createdAt?: string;
+}
+
+export interface Stack {
+  name: string;
+  path: string;
+  containers: number;
+  running: number;
+  status: "running" | "partial" | "stopped" | "unknown";
+  modifiedAt?: string;
 }
 
 export interface Process {

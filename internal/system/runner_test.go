@@ -17,7 +17,7 @@ func TestRootRunnerExecutes(t *testing.T) {
 
 func TestRunnerWrapEscalation(t *testing.T) {
 	// Runner mit Credential → privilegierte Kommandos werden über sudo geführt.
-	user := NewRunner(1000, 1000, []int{1000}, "alice", "geheim")
+	user := NewRunner(1000, 1000, []int{1000}, "alice", "/home/alice", "geheim")
 	name, args, needsPw := user.wrap(true, "systemctl", []string{"start", "nginx"})
 	if name != "sudo" || !needsPw {
 		t.Fatalf("erwartet sudo-Eskalation, got name=%q needsPw=%v", name, needsPw)

@@ -141,6 +141,7 @@ func New(cfg *config.Config) (http.Handler, *ws.Activity) {
 					r.Get("/system/podman/stacks/{name}", a.StackGet)
 					r.Put("/system/podman/stacks/{name}", a.StackWrite)
 					r.Delete("/system/podman/stacks/{name}", a.StackDelete)
+					r.Post("/system/podman/stacks/{name}/validate", a.StackValidate)
 					r.Post("/system/podman/stacks/{name}/{action}", a.StackAction)
 					// Energie
 					r.Post("/system/power", a.Power)

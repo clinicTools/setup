@@ -2,6 +2,7 @@ package system
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"sort"
@@ -249,7 +250,10 @@ func ContainerAction(r *Runner, id, action string) error {
 	}
 	var args []string
 	switch action {
-	case "start", "stop", "restart", "kill", "pause", "unpause":
+	case "stop", "restart":
+		// Grace-Periode vor SIGKILL, damit Dienste sauber herunterfahren.
+		args = []string{action, "-t", "10", id}
+	case "start", "kill", "pause", "unpause":
 		args = []string{action, id}
 	case "rm":
 		args = []string{"rm", "-f", id}
@@ -447,6 +451,49 @@ func StackComposeArgs(name, action string) (string, []string, error) {
 		return "", nil, invalidInput("unbekannte Stack-Aktion: %q", action)
 	}
 	return cmd, args, nil
+}
+
+// StackValidate prüft die compose.yaml eines Stacks mit `compose config`.
+// Liefert die Fehlermeldung des Werkzeugs, wenn die Datei ungültig ist.
+func StackValidate(r *Runner, name string) error {
+	if !validStackName(name) {
+		return invalidInput("ungültiger Stack-Name: %q", name)
+	}
+	cmd, base, ok := ComposeCommand()
+	if !ok {
+		return invalidInput("kein Compose-Werkzeug gefunden")
+	}
+	args := append(append([]string{}, base...), "-f", StackPath(name), "config")
+	if _, err := r.sudo(cmd, args...); err != nil {
+		return invalidInput("compose.yaml ist ungültig: %s", condenseToolError(err))
+	}
+	return nil
+}
+
+// condenseToolError verdichtet die oft sehr geschwätzige Werkzeugausgabe
+// (podman-compose gibt komplette Python-Tracebacks aus) auf die letzten
+// aussagekräftigen Zeilen — das ist der eigentliche Fehler.
+func condenseToolError(err error) string {
+	var failed *ErrCommandFailed
+	msg := err.Error()
+	if errors.As(err, &failed) && strings.TrimSpace(failed.Stderr) != "" {
+		msg = failed.Stderr
+	}
+	all := lines(msg)
+	// Traceback-Rahmen entfernen, Kernaussage behalten.
+	keep := make([]string, 0, 3)
+	for i := len(all) - 1; i >= 0 && len(keep) < 3; i-- {
+		l := strings.TrimSpace(all[i])
+		if l == "" || strings.HasPrefix(l, "File \"") || l == "Traceback (most recent call last):" {
+			continue
+		}
+		keep = append([]string{l}, keep...)
+	}
+	out := strings.Join(keep, " · ")
+	if len(out) > 400 {
+		out = out[:400] + " …"
+	}
+	return out
 }
 
 // --- Validierung & Helfer ---

@@ -179,6 +179,8 @@ export const api = {
     put<{ ok: boolean }>(`/system/podman/stacks/${encodeURIComponent(name)}`, { compose }),
   deleteStack: (name: string) =>
     del<{ ok: boolean }>(`/system/podman/stacks/${encodeURIComponent(name)}`),
+  validateStack: (name: string) =>
+    post<{ valid: boolean }>(`/system/podman/stacks/${encodeURIComponent(name)}/validate`),
   stackAction: (name: string, action: string) =>
     post<{ jobId: string }>(
       `/system/podman/stacks/${encodeURIComponent(name)}/${encodeURIComponent(action)}`,

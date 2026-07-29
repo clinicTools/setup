@@ -29,7 +29,8 @@ Titel + Beschreibung + rechtsbündiger Aktion, gruppierte Abschnitte).
 | **Geplante Aufgaben** | systemd-Timer und Cron-Jobs |
 | **Datum & Uhrzeit** | Zeitzone setzen, NTP-Synchronisation umschalten |
 | **Systemprotokolle** | journald-Einträge mit Unit-/Prioritätsfilter, **Live-Verfolgung** (`journalctl -f`) |
-| **k3s (Kubernetes)** | Cluster **installieren** (Live-Log), Status, Knoten/Pods, Kubeconfig, Join-Token, Deinstallation |
+| **Container (Podman)** | Podman-Status, Container live auflisten, starten/stoppen/neu starten/entfernen, Live-Protokoll, Images |
+| **Compose-Stacks** | `compose.yaml` im **CodeMirror-Editor** bearbeiten, prüfen und Stacks starten/stoppen/aktualisieren |
 | **Audit-Protokoll** | Nachvollziehbare Aufzeichnung aller administrativen Aktionen |
 | **Energie** | Neustart / Herunterfahren (nur Admins) |
 
@@ -43,7 +44,8 @@ hinzufügen/löschen, **Benutzer** bearbeiten + **Gruppen** anlegen/löschen,
 
 ### Langlaufende Vorgänge (Jobs)
 
-`apt`-Aktionen und die k3s-Installation laufen als **asynchrone Jobs**: der
+`apt`-Aktionen, Podman-Installation und alle Compose-Vorgänge (`up`/`down`/
+`restart`/`pull`) laufen als **asynchrone Jobs**: der
 Subprozess wird gestartet und seine Ausgabe **zeilenweise live über den
 WebSocket-Channel `jobs`** an eine Terminal-artige Konsole im Frontend gestreamt
 (mit Abbrechen-Funktion) — kein 30-Sekunden-Timeout.
@@ -59,13 +61,35 @@ sudoers-Policy des Systems entscheidet, nicht die Anwendung.
 - **Lesende Kommandos** (z. B. `journalctl`) laufen als der Benutzer → ein
   unprivilegierter Benutzer sieht nur sein eigenes Journal, nicht das System-Log.
 - **Schreibende/privilegierte Kommandos** (`systemctl`, `useradd`, `apt`, `ufw`,
-  k3s …) laufen via `sudo` → wer keine sudo-Rechte hat, wird vom OS abgewiesen.
+  `podman` …) laufen via `sudo` → wer keine sudo-Rechte hat, wird vom OS abgewiesen.
+- Beim UID-Wechsel wird die Umgebung benutzerbezogen gesetzt (`HOME`, `USER`,
+  `LOGNAME`, `XDG_RUNTIME_DIR`) — sonst scheitern Werkzeuge, die ihre
+  Konfiguration im Home-Verzeichnis suchen (z. B. `podman`).
 - Das **Admin-Flag** wird aus der tatsächlichen sudo-Berechtigung abgeleitet
   (`sudo -v`), nicht aus der Gruppenzugehörigkeit.
 - Das Passwort wird beim Login einmalig erfasst und **AES-GCM-verschlüsselt im
   Speicher** gehalten (flüchtiger Prozess-Schlüssel), nie geloggt, beim Logout
   verworfen. Läuft der Dienst nicht als root (Entwicklung), wird ohne UID-Wechsel
   direkt ausgeführt.
+
+### Container & Compose-Stacks (Podman)
+
+Container werden über **Podman** auf System-Ebene (rootful, via `sudo`) verwaltet.
+Compose-Stacks liegen als `compose.yaml` unter
+`/etc/debian-admin/stacks/<name>/` mit den Rechten `0700`/`0600` — Compose-Dateien
+enthalten häufig Zugangsdaten, deshalb ist **auch das Lesen Admins vorbehalten**.
+
+Die Erkennung des Compose-Werkzeugs erfolgt in dieser Reihenfolge:
+
+1. **`podman-compose`** — spricht die Podman-CLI direkt an und funktioniert
+   **ohne** laufenden API-Socket (bevorzugt).
+2. **`podman compose`** — delegiert an einen externen Provider (docker-compose)
+   und **setzt eine aktive `podman.socket` voraus**; die Oberfläche weist darauf hin.
+3. **`docker compose`** — letzte Rückfallebene.
+
+Die Zuordnung Container → Stack erfolgt über die Compose-Labels
+(`com.docker.compose.project` bzw. `io.podman.compose.project`). Im Editor prüft
+**„Prüfen"** die Datei per `compose config` und meldet Syntaxfehler mit Zeilenangabe.
 
 ### Sicherheit
 
@@ -97,6 +121,8 @@ offen ist.
 | `journal` | Live-Log-Stream (`journalctl -f`), Subprozess nur bei aktiver Subscription | Ereignis |
 | `services` | systemd-Dienststatus | 3 s |
 | `processes` | Top-Prozesse nach Speicher | 2 s |
+| `containers` | Podman-Container inkl. Stack-Zuordnung | 3 s |
+| `containerlogs` | Live-Protokoll eines Containers (`podman logs -f`) | Ereignis |
 
 Verwendet im **Dashboard** (Live-Kacheln + Sparklines), in den **Systemprotokollen**
 (Live-Verfolgung) und bei den **Diensten** (Live-Status). Eine Statusanzeige in

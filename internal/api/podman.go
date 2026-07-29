@@ -126,6 +126,15 @@ func (a *API) StackDelete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// StackValidate prüft die compose.yaml auf Syntax-/Schemafehler.
+func (a *API) StackValidate(w http.ResponseWriter, r *http.Request) {
+	if err := system.StackValidate(a.Runner(r), chi.URLParam(r, "name")); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"valid": true})
+}
+
 // StackAction startet eine Compose-Aktion (up/down/restart/pull/…) als Job,
 // dessen Ausgabe live über den WebSocket-Channel „jobs" gestreamt wird.
 func (a *API) StackAction(w http.ResponseWriter, r *http.Request) {

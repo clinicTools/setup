@@ -71,6 +71,10 @@ func (r *Runner) userEnv() []string {
 		home = "/home/" + r.username
 	}
 	return append(env,
+		// Stabile, sprachunabhaengige und farbfreie Ausgabe — sonst sind
+		// Parser locale-abhaengig und Konsolen zeigen ANSI-Steuerzeichen.
+		"LC_ALL=C",
+		"NO_COLOR=1",
 		"HOME="+home,
 		"USER="+r.username,
 		"LOGNAME="+r.username,

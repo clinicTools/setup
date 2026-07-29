@@ -11,6 +11,7 @@ import {
   Save,
   ArrowLeft,
   FileCode2,
+  CheckCircle2,
 } from "lucide-vue-next";
 import { api } from "@/lib/api";
 import { useAsyncData } from "@/composables/useAsyncData";
@@ -50,6 +51,7 @@ const editing = ref<null | { name: string; compose: string; isNew: boolean }>(nu
 const jobId = ref<string | null>(null);
 const busy = ref(false);
 const deleteTarget = ref<Stack | null>(null);
+const validating = ref(false);
 
 const dirty = ref(false);
 const originalCompose = ref("");
@@ -148,6 +150,21 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
+/** Speichert und prüft die compose.yaml mit `compose config`. */
+async function validate(): Promise<void> {
+  if (!editing.value || editing.value.isNew) return;
+  validating.value = true;
+  try {
+    if (dirty.value) await save();
+    await api.validateStack(editing.value.name.trim());
+    toast.success("compose.yaml ist gültig");
+  } catch (e) {
+    toast.error((e as Error).message);
+  } finally {
+    validating.value = false;
+  }
+}
+
 function onComposeInput(value: string): void {
   if (!editing.value) return;
   editing.value.compose = value;
@@ -190,6 +207,9 @@ function onComposeInput(value: string): void {
               <Badge v-if="dirty" variant="warning">ungespeichert</Badge>
             </h2>
             <div v-if="auth.user?.admin && !editing.isNew" class="flex items-center gap-1">
+              <Button variant="outline" size="sm" :disabled="validating" @click="validate">
+                <CheckCircle2 class="h-4 w-4" /> Prüfen
+              </Button>
               <Button variant="outline" size="sm" @click="runAction('up')">
                 <Play class="h-4 w-4 text-success" /> Starten
               </Button>

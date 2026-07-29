@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted } from "vue";
+import { computed, nextTick, ref, watch, onUnmounted } from "vue";
 import {
   Boxes,
   Play,
@@ -105,6 +105,7 @@ async function onInstallFinished(s: string): Promise<void> {
 
 const logTarget = ref<Container | null>(null);
 const logLines = ref<string[]>([]);
+const logBox = ref<HTMLElement | null>(null);
 let unsubLogs: (() => void) | null = null;
 
 function stopLogs(): void {
@@ -120,6 +121,11 @@ watch(logTarget, (c) => {
     const line = (payload as { line: string }).line;
     logLines.value.push(line);
     if (logLines.value.length > 2000) logLines.value.splice(0, logLines.value.length - 2000);
+    // Automatisch mitscrollen, solange der Benutzer am Ende steht.
+    void nextTick(() => {
+      const el = logBox.value;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
   });
 });
 onUnmounted(stopLogs);
@@ -297,7 +303,10 @@ onUnmounted(stopLogs);
               <X class="h-4 w-4" />
             </Button>
           </div>
-          <div class="scrollbar-thin app-selectable flex-1 overflow-auto bg-zinc-950 p-3 font-mono text-xs text-zinc-300">
+          <div
+            ref="logBox"
+            class="scrollbar-thin app-selectable flex-1 overflow-auto bg-zinc-950 p-3 font-mono text-xs text-zinc-300"
+          >
             <div v-for="(l, i) in logLines" :key="i" class="whitespace-pre-wrap break-words">{{ l }}</div>
             <div v-if="!logLines.length" class="text-zinc-500">Warte auf Ausgabe …</div>
           </div>

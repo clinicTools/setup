@@ -7,7 +7,7 @@ import type { JobLine } from "@/lib/types";
 import Button from "./ui/Button.vue";
 
 // Verfolgt einen Job über den WebSocket-Channel „jobs": Verlauf + Live-Stream
-// + Endstatus. Wird für apt-Aktionen und die k3s-Installation verwendet.
+// + Endstatus. Wird für apt-Aktionen, Podman/Compose und Installationen verwendet.
 const props = defineProps<{ jobId: string | null }>();
 const emit = defineEmits<{ (e: "finished", status: string): void }>();
 
@@ -50,6 +50,12 @@ async function cancel(): Promise<void> {
   if (props.jobId) await api.cancelJob(props.jobId);
 }
 
+/** Entfernt ANSI-Steuerzeichen (docker-compose faerbt seine Ausgabe ein). */
+const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
+function clean(text: string): string {
+  return text.replace(ANSI, "");
+}
+
 const streamColor = (s: string) => (s === "stderr" ? "text-red-400" : s === "system" ? "text-primary" : "text-zinc-300");
 </script>
 
@@ -72,7 +78,7 @@ const streamColor = (s: string) => (s === "stderr" ? "text-red-400" : s === "sys
       class="scrollbar-thin h-64 overflow-y-auto bg-zinc-950 p-3 font-mono text-xs leading-relaxed"
     >
       <div v-for="line in lines" :key="line.seq" :class="streamColor(line.stream)">
-        {{ line.text }}
+        {{ clean(line.text) }}
       </div>
       <div v-if="lines.length === 0" class="text-zinc-500">Warte auf Ausgabe …</div>
     </div>
